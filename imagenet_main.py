@@ -1,0 +1,79 @@
+import argparse
+import os
+import random
+
+import torch
+import torch.nn as nn
+import torch.utils.data
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+import torchvision.models as models
+
+from sparsity_utils import *
+
+model_names = sorted(name for name in models.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(models.__dict__[name]))
+
+parser = argparse.ArgumentParser(description='PyTorch ImageNet')
+parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
+                    help='path to dataset')
+parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg11',
+                    choices=model_names,
+                    help='model architecture: ' +
+                        ' | '.join(model_names))
+parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+                    help='number of data loading workers (default: 4)')
+parser.add_argument('-b', '--batch-size', default=128, type=int,
+                    metavar='N',
+                    help='mini-batch size')
+parser.add_argument('-p', '--print-freq', default=0, type=int,
+                    metavar='N', help='print frequency (default: 10)')
+parser.add_argument('--gpu', default=None, type=int,
+                    help='GPU id to use.')
+
+
+def imagenet_main():
+    args = parser.parse_args()
+
+    random.seed(0)
+    torch.manual_seed(0)
+
+    # create model
+    print("=> using pre-trained model '{}'".format(args.arch))
+    model = models.__dict__[args.arch](pretrained=True)
+
+    if args.gpu is not None:
+        print("Use GPU: {}".format(args.gpu))
+        torch.cuda.set_device(args.gpu)
+        model = model.cuda(args.gpu)
+    else:
+        print('using CPU, this will be slow')
+
+    # define loss function (criterion)
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+
+    # Data loading code
+    valdir = os.path.join(args.data, 'val')
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    val_loader = torch.utils.data.DataLoader(
+        datasets.ImageFolder(valdir, transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+        ])),
+        batch_size=args.batch_size, shuffle=False,
+        num_workers=args.workers, pin_memory=True)
+
+    handle_list = regsiter_hooks(model)
+
+    validate(val_loader, model, criterion, args.print_freq)
+
+    output_sparsity_to_csv(args.arch, model)
+    delete_hooks(model, handle_list)
+
+if __name__ == '__main__':
+    imagenet_main()
