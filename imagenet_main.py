@@ -32,6 +32,8 @@ parser.add_argument('-p', '--print-freq', default=0, type=int,
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 
+parser.add_argument('--coarse_in', default=-1, type=int,
+                    help='')
 
 def imagenet_main():
     args = parser.parse_args()
@@ -68,7 +70,7 @@ def imagenet_main():
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    handle_list = regsiter_hooks(model)
+    handle_list = regsiter_hooks(model, args.coarse_in)
 
     validate(val_loader, model, criterion, args.print_freq)
 
