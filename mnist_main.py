@@ -95,6 +95,7 @@ def mnist_main():
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
+    replace_with_vanilla_convolution(model)
     handle_list = regsiter_hooks(model, args.coarse_in)
 
     validate(test_loader, model, criterion, args.print_freq)

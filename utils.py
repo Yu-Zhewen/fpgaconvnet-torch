@@ -103,3 +103,11 @@ def accuracy(output, target, topk=(1,), no_reduce=False):
             correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
+
+def replace_modules(model, replace_dict):
+    for name, module in model.named_modules(): 
+        for subname, submodule in module.named_children():
+            if submodule in replace_dict.keys():
+                new_submodule = replace_dict[submodule]
+                assert(hasattr(module, subname))
+                setattr(module,subname,new_submodule)
