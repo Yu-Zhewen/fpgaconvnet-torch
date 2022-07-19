@@ -12,7 +12,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from sparsity_utils import *
-
+from quan_utils import *
 
 LENET5 = nn.Sequential(
     nn.Conv2d(1, 6, (5, 5), stride=1, padding=0),  # (1,28,28) -> (6,24,24)
@@ -94,6 +94,8 @@ def mnist_main():
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+
+    model_quantisation(model, test_loader)
 
     replace_with_vanilla_convolution(model)
     handle_list = regsiter_hooks(model, args.coarse_in)

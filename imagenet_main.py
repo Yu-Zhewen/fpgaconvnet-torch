@@ -10,6 +10,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from sparsity_utils import *
+from quan_utils import *
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -73,6 +74,8 @@ def imagenet_main():
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+
+    model_quantisation(model, val_loader)
 
     replace_with_vanilla_convolution(model)
     handle_list = regsiter_hooks(model, args.coarse_in)
