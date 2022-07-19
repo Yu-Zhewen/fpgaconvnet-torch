@@ -54,7 +54,7 @@ def regsiter_hooks(model, coarse_in=-1):
 
     return handle_list
 
-def output_sparsity_to_csv(model_name, model):
+def output_sparsity_to_csv(model_name, model, accum_input=False):
     file_path = "{}_sparsity_log.csv".format(model_name)
 
     bFirst = True
@@ -66,7 +66,10 @@ def output_sparsity_to_csv(model_name, model):
                     csv_writer = csv.writer(f)
                     csv_header= ["Layer Name", "Layer Type"]
                     if module.coarse_in == -1:
-                        csv_header += ["Layer Input Overall Sparsity (Zeros / NCHW)"]
+                        if accum_input:
+                            csv_header += ["Accum Input Sparsity (Zeros / im2col(NCHW))"]
+                        else:
+                            csv_header += ["Layer Input Overall Sparsity (Zeros / NCHW)"]
                     else:
                         csv_header += ["COARSE_IN", "Coarse In Sparsity Histogram (Zeros / COARSE_IN)"]
                     csv_writer.writerow(csv_header)

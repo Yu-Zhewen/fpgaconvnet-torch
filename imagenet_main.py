@@ -82,7 +82,7 @@ def imagenet_main():
 
     validate(val_loader, model, criterion, args.print_freq)
 
-    output_sparsity_to_csv(args.arch, model)
+    output_sparsity_to_csv(args.arch, model, accum_input=True)
     delete_hooks(model, handle_list)
 
 if __name__ == '__main__':
