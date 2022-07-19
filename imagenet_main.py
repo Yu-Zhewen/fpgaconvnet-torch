@@ -44,13 +44,17 @@ def imagenet_main():
     # create model
     print("=> using pre-trained model '{}'".format(args.arch))
     model = models.__dict__[args.arch](pretrained=True)
+    random_input = torch.randn(1, 3, 224, 224)
 
     if args.gpu is not None:
         print("Use GPU: {}".format(args.gpu))
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
+        random_input = random_input.cuda()
     else:
         print('using CPU, this will be slow')
+
+    #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True)    
 
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)

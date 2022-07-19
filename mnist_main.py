@@ -69,13 +69,17 @@ def mnist_main():
 
     state_dict = torch.load(str(MODEL_DIR / "mnist_classifier.pth"), map_location='cpu')
     LENET5.load_state_dict(state_dict)
+    random_input = torch.randn(1, 1, 28, 28)
 
     if args.gpu is not None:
         print("Use GPU: {}".format(args.gpu))
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
+        random_input = random_input.cuda()
     else:
         print('using CPU, this will be slow')
+
+    #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True)  
 
     # define loss function (criterion)
     criterion = nn.NLLLoss().cuda(args.gpu)
