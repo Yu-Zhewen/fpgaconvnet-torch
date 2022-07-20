@@ -182,7 +182,6 @@ def activation_quantization(model, wordlength, quantization_method, calibrate_lo
                 target = target.cuda(non_blocking=True)
 
             model(images)
-            break
 
     for name, module in model.named_modules():
         if isinstance(module, QuanAct):

@@ -8,6 +8,8 @@ from utils import *
 from functools import reduce
 import torch.nn.functional as F
 
+import numpy as np
+
 def get_factors(n):
     return list(set(reduce(list.__add__,
                 ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
@@ -115,27 +117,33 @@ class VanillaConvolutionWrapper(nn.Module):
         w_windows = patches.shape[3]
         patches = patches.expand(out_channels, *patches.shape)
         patches = patches.permute(1, 3, 4, 0, 2, 5, 6)
-        patches = patches.contiguous()
-
-        patches = patches * self.conv_module.weight
-
         num_of_elements = torch.numel(patches)
-        num_of_zeros = num_of_elements - torch.count_nonzero(patches)
+
+        num_of_nonzeros = 0
+        y = torch.zeros(patches.shape[0:4])
+        if torch.cuda.is_available():
+            y = y.cuda()
+        # roll the loop to reduce memory
+        for hi, wi in np.ndindex(patches.shape[1:3]):
+            patch = patches[:,hi,wi].clone()
+            patch = patch * self.conv_module.weight
+            num_of_nonzeros += torch.count_nonzero(patch)
+            y[:,hi,wi] = patch.sum(-1).sum(-1).sum(-1)
+            
+        num_of_zeros = num_of_elements - num_of_nonzeros
         layer_sparsity = num_of_zeros / num_of_elements
         self.conv_module.layer_sparsity.update(layer_sparsity, batch_size)
 
-        patches = patches.sum(-1).sum(-1).sum(-1)
-
         if self.conv_module.bias is not None:
             bias = self.conv_module.bias.expand(batch_size, h_windows, w_windows, out_channels)
-            patches = patches + bias
-        patches = patches.permute(0, 3, 1, 2)
+            y = y + bias
+        y = y.permute(0, 3, 1, 2)
 
         if self.run_reference:
             ref_output = self.conv_module(x)
-            assert torch.allclose(ref_output, patches, atol=1e-5)
+            assert torch.allclose(ref_output, y, atol=1e-5)
 
-        return patches
+        return y
 
 def replace_with_vanilla_convolution(model):
     replace_dict = {}

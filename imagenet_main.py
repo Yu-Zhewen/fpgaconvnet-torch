@@ -25,7 +25,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg11',
                         ' | '.join(model_names))
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('-b', '--batch-size', default=1, type=int,
+parser.add_argument('-b', '--batch-size', default=128, type=int,
                     metavar='N',
                     help='mini-batch size')
 parser.add_argument('-p', '--print-freq', default=0, type=int,
