@@ -19,7 +19,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg11',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
@@ -54,9 +54,7 @@ def imagenet_main():
         random_input = random_input.cuda()
     else:
         print('using CPU, this will be slow')
-
-    #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True)    
-
+   
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
@@ -74,6 +72,11 @@ def imagenet_main():
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+
+    if args.arch == "resnet18":
+        fix_resnet(model, export_to_fpgaconvnet=False)
+
+    #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True) 
 
     model_quantisation(model, val_loader)
 

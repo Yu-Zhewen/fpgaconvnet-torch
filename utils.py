@@ -1,5 +1,8 @@
 import time
 import torch
+import torch.nn as nn
+from torchvision.models.resnet import BasicBlock
+import copy
 
 def validate(val_loader, model, criterion, print_freq=0):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -111,3 +114,76 @@ def replace_modules(model, replace_dict):
                 new_submodule = replace_dict[submodule]
                 assert(hasattr(module, subname))
                 setattr(module,subname,new_submodule)
+
+# duplicate relu instances for quantisation 
+class BasicBlockReluFixed(nn.Module):
+    def __init__(self, origin_block):
+        super(BasicBlockReluFixed, self).__init__()
+
+        self.conv1 = origin_block.conv1
+        self.bn1 = origin_block.bn1
+        self.relu1 = nn.ReLU()
+
+        self.conv2 = origin_block.conv2
+        self.bn2 = origin_block.bn2
+        self.relu2 = nn.ReLU()
+
+        self.downsample = origin_block.downsample
+        self.stride = origin_block.stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu2(out)
+
+        return out
+
+# remove residual connection to pass through fpgaConvNet parser
+class BasicBlockNonResidual(nn.Module):
+    def __init__(self, origin_block):
+        super(BasicBlockNonResidual, self).__init__()
+
+        self.conv1 = origin_block.conv1
+        self.bn1 = origin_block.bn1
+        self.relu1 = nn.ReLU()
+        
+        self.conv2 = origin_block.conv2
+        self.bn2 = origin_block.bn2
+        self.relu2 = nn.ReLU()
+
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+
+        return out
+
+def fix_resnet(model, export_to_fpgaconvnet=False):
+    replace_dict = {}
+
+    for name, module in model.named_modules(): 
+        if export_to_fpgaconvnet:
+            if isinstance(module, BasicBlock):
+                replace_dict[module] = BasicBlockNonResidual(copy.deepcopy(module))
+            elif isinstance(module, nn.AdaptiveAvgPool2d):
+                replace_dict[module] = nn.AvgPool2d((7,7))
+        else:
+            if isinstance(module, BasicBlock):
+                replace_dict[module] = BasicBlockReluFixed(copy.deepcopy(module))
+
+    replace_modules(model, replace_dict)
