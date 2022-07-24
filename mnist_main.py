@@ -48,6 +48,23 @@ parser.add_argument('--gpu', default=None, type=int,
 parser.add_argument('--coarse_in', default=-1, type=int,
                     help='')
 
+def fuse_input_normalisation_to_first_conv(model, normalize, random_input):
+    model.eval()
+    for name, module in model.named_modules():
+        if isinstance(module, nn.Conv2d):
+            ref = module(normalize(random_input))
+
+            module.weight.data = module.weight.data / (normalize.std[0])
+            input = torch.full_like(random_input, -normalize.mean[0])
+            bias = module(input)
+            bias = bias[0,:,0,0]
+            module.bias.data = bias
+
+            new = module(random_input)
+
+            torch.allclose(ref, new)
+            return
+
 def mnist_main():
     args = parser.parse_args()
 
@@ -90,10 +107,12 @@ def mnist_main():
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST(args.data, train=False, transform=transforms.Compose([
             transforms.ToTensor(),
-            normalize
+            #normalize
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+
+    fuse_input_normalisation_to_first_conv(model, normalize, random_input)
 
     model_quantisation(model, test_loader)
 
