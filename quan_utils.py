@@ -10,7 +10,7 @@ class QuanMode(Enum):
     LAYER_BFP = 2
     CHANNEL_BFP = 3
 
-QUAN_TARGET_MODULES = [nn.Conv2d, nn.ReLU, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.Linear]
+QUAN_TARGET_MODULES = [nn.Conv2d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d, nn.Linear]
 
 def linear_quantize(x, scaling_factor, zero_point):
     if len(x.shape) == 4:

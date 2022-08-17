@@ -19,7 +19,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='mobilenet_v2',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
@@ -75,6 +75,8 @@ def imagenet_main():
 
     if args.arch == "resnet18":
         fix_resnet(model, export_to_fpgaconvnet=False)
+    elif args.arch == "mobilenet_v2":
+        fix_mobilenet(model, export_to_fpgaconvnet=False)
 
     #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True) 
 

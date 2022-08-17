@@ -2,7 +2,9 @@ import time
 import torch
 import torch.nn as nn
 from torchvision.models.resnet import BasicBlock
+from torchvision.models.mobilenetv2 import InvertedResidual
 import copy
+import types
 
 def validate(val_loader, model, criterion, print_freq=0):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -186,4 +188,28 @@ def fix_resnet(model, export_to_fpgaconvnet=False):
             if isinstance(module, BasicBlock):
                 replace_dict[module] = BasicBlockReluFixed(copy.deepcopy(module))
 
+    replace_modules(model, replace_dict)
+
+def fix_mobilenet(model, export_to_fpgaconvnet=False):
+
+    def _forward_impl(self, x):
+        # This exists since TorchScript doesn't support inheritance, so the superclass method
+        # (this one) needs to have a name other than `forward` that can be accessed in a subclass
+        x = self.features(x)
+        # Cannot use "squeeze" as batch-size can be 1
+        x = self.avg_pool2d(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
+        return x
+
+    model.avg_pool2d = nn.AvgPool2d((7,7))
+    model._forward_impl = types.MethodType(_forward_impl, model)
+
+    replace_dict = {}
+    if export_to_fpgaconvnet:
+        for name, module in model.named_modules():
+            if isinstance(module, InvertedResidual):
+                module.use_res_connect = False
+            if isinstance(module, nn.ReLU6):
+                replace_dict[module] = nn.ReLU()
     replace_modules(model, replace_dict)

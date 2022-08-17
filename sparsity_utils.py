@@ -118,6 +118,7 @@ class VanillaConvolutionWrapper(nn.Module):
         self.conv_module.kk = np.prod(self.conv_module.kernel_size)
         self.hist_bin_edges = torch.linspace(0, self.conv_module.kk+1, self.conv_module.kk+2)
         self.conv_module.sparsity_hist = torch.zeros(len(self.hist_bin_edges)-1)
+
     def forward(self, x):
 
         # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
@@ -126,31 +127,40 @@ class VanillaConvolutionWrapper(nn.Module):
 
         dh, dw = self.conv_module.stride
         out_channels, in_channels, kh, kw = self.conv_module.weight.shape
+        groups = self.conv_module.groups
+        in_channels *= groups
         batch_size = x.shape[0]
 
         patches = x_padded.unfold(2, kh, dh).unfold(3, kw, dw)
         h_windows = patches.shape[2]
         w_windows = patches.shape[3]
-        patches = patches.expand(out_channels, *patches.shape)
+        patches = patches.expand(out_channels//groups, *patches.shape)
         patches = patches.permute(1, 3, 4, 0, 2, 5, 6)
         num_of_elements = torch.numel(patches)
 
         num_of_nonzeros = 0
-        y = torch.zeros(patches.shape[0:4])
+        y = torch.zeros((batch_size, h_windows, w_windows, out_channels))
         if torch.cuda.is_available():
             y = y.cuda()
+
         # roll the loop to reduce memory
         for hi, wi in np.ndindex(patches.shape[1:3]):
-            patch = patches[:,hi,wi].clone()
-            patch = patch * self.conv_module.weight
+            patch = patches[:,hi,wi].reshape((batch_size, out_channels//groups, groups, in_channels//groups, kh, kw))
+            patch = patch.permute(0, 2, 1, 3, 4, 5)
+            weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
+            patch = patch * weight
+
             if not self.conv_module.kernel_distribution:    
                 num_of_nonzeros += torch.count_nonzero(patch)
             else:
                 tmp = patch.reshape((-1, self.conv_module.kk))
                 num_of_zeros = self.conv_module.kk - torch.count_nonzero(tmp, dim=1)
                 self.conv_module.sparsity_hist += torch.histogram(num_of_zeros.float().cpu(), bins=self.hist_bin_edges)[0]
-                
-            y[:,hi,wi] = patch.sum(-1).sum(-1).sum(-1)
+
+            patch = patch.sum(-1).sum(-1).sum(-1)
+            patch = patch.reshape(batch_size, out_channels)
+
+            y[:,hi,wi] = patch
 
         if not self.conv_module.kernel_distribution:    
             num_of_zeros = num_of_elements - num_of_nonzeros
