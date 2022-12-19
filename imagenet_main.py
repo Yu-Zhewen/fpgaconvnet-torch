@@ -19,7 +19,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                     help='path to dataset')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='mobilenet_v2',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
@@ -33,7 +33,7 @@ parser.add_argument('-p', '--print-freq', default=0, type=int,
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 
-parser.add_argument('--coarse_in', default=-1, type=int,
+parser.add_argument('--coarse_in', default=[3,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16], type=int, metavar='N', nargs='+',
                     help='')
 
 def imagenet_main():
@@ -80,7 +80,7 @@ def imagenet_main():
 
     #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True) 
 
-    model_quantisation(model, val_loader)
+    #model_quantisation(model, val_loader)
 
     replace_with_vanilla_convolution(model)
     handle_list = regsiter_hooks(model, args.coarse_in)

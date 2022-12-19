@@ -22,35 +22,43 @@ def is_coarse_in_feasible(module, coarse_in):
     
     return coarse_in in get_factors(in_channels)
 
-def regsiter_hooks(model, coarse_in=-1):
+def regsiter_hooks(model, coarse_cfg=None):
     hist_bin_edges = torch.linspace(0, 1, 11)
 
-    def log_conv_input_sparsity(m, input, output):
-        conv_input = input[0].detach()
-        batch_size = conv_input.size()[0]
-
-        if m.coarse_in == -1:
-            num_of_elements = torch.numel(conv_input)
-            num_of_zeros = num_of_elements - torch.count_nonzero(conv_input)
-            layer_sparsity = num_of_zeros / num_of_elements
-            m.layer_sparsity.update(layer_sparsity, batch_size)
-        else:
-            conv_input = conv_input.transpose(0,1)
-            conv_input = conv_input.reshape((m.coarse_in, -1))
-            num_of_zeros = m.coarse_in - torch.count_nonzero(conv_input, dim=0)
-            coarse_in_sparsity = num_of_zeros / m.coarse_in
-            m.sparsity_hist += torch.histogram(coarse_in_sparsity.cpu(), bins=hist_bin_edges)[0]
+    #def log_conv_input_sparsity(m, input, output):
+    #    conv_input = input[0].detach()
+    #    batch_size = conv_input.size()[0]
+    #
+    #    if m.coarse_in == -1:
+    #        num_of_elements = torch.numel(conv_input)
+    #        num_of_zeros = num_of_elements - torch.count_nonzero(conv_input)
+    #        layer_sparsity = num_of_zeros / num_of_elements
+    #        m.layer_sparsity.update(layer_sparsity, batch_size)
+    #    else:
+    #        conv_input = conv_input.transpose(0,1)
+    #        conv_input = conv_input.reshape((m.coarse_in, -1))
+    #        num_of_zeros = m.coarse_in - torch.count_nonzero(conv_input, dim=0)
+    #        coarse_in_sparsity = num_of_zeros / m.coarse_in
+    #        m.sparsity_hist += torch.histogram(coarse_in_sparsity.cpu(), bins=hist_bin_edges)[0]
 
     handle_list = []
+    conv_layer_index = 0
     for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d) :#or isinstance(module, nn.Linear):
-            module.coarse_in = coarse_in
-            if coarse_in == -1:
+        if isinstance(module, nn.Conv2d) :#or isinstance(module, nn.Linear):        
+            if coarse_cfg is None:
+                module.coarse_in = -1
                 module.layer_sparsity = AverageMeter('Layer Sparsity', ':.4e')
-            elif is_coarse_in_feasible(module, coarse_in):
-                module.sparsity_hist = torch.zeros(len(hist_bin_edges)-1)
             else:
-                continue
+                #module.sparsity_hist = torch.zeros(len(hist_bin_edges)-1)
+                coarse_in = coarse_cfg[conv_layer_index]
+                assert is_coarse_in_feasible(module, coarse_in)
+                module.coarse_in = coarse_in
+                module.sparsity_mean = torch.zeros(coarse_in)
+                module.sparsity_var = torch.zeros(coarse_in)
+                module.sparsity_cov = torch.zeros(coarse_in, coarse_in)
+                module.kernel_count = 0
+            conv_layer_index += 1
+            # deprecated, the forward hook counts at the conv layer input not at the conv module input (sliding window ignored)
             #handle = module.register_forward_hook(log_conv_input_sparsity)
             #handle_list.append(handle)
 
@@ -109,7 +117,7 @@ def delete_hooks(model, handle_list):
                 del module.sparsity_hist
 
 class VanillaConvolutionWrapper(nn.Module):
-    def __init__(self, conv_module, kernel_distribution=False):
+    def __init__(self, conv_module, kernel_distribution=True):
         super(VanillaConvolutionWrapper, self).__init__()
 
         self.conv_module = conv_module
@@ -118,6 +126,29 @@ class VanillaConvolutionWrapper(nn.Module):
         self.conv_module.kk = np.prod(self.conv_module.kernel_size)
         self.hist_bin_edges = torch.linspace(0, self.conv_module.kk+1, self.conv_module.kk+2)
         self.conv_module.sparsity_hist = torch.zeros(len(self.hist_bin_edges)-1)
+
+
+    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+    def update_batch_sparsity(self, newValues):
+        (count, mean, M2, cov) = self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var, self.conv_module.sparsity_cov
+        M2 = M2 * count
+        cov = cov * (count - 1)
+
+        count += newValues.size()[0]
+
+        # newvalues - oldMean
+        delta = torch.subtract(newValues, mean.expand_as(newValues))
+        mean += torch.sum(delta / count, dim=0)
+        # newvalues - newMeant
+        delta2 = torch.subtract(newValues, mean.expand_as(newValues))
+        M2 += torch.sum(delta * delta2, dim=0)
+
+        cov += torch.matmul(delta.T, delta2) 
+
+        M2 = M2 / count
+        cov = cov / (count - 1)
+        self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var, self.conv_module.sparsity_cov = (count, mean, M2, cov)
+        self.conv_module.sparsity_cor = cov / torch.sqrt(torch.matmul(M2.unsqueeze(1), M2.unsqueeze(0))) * (count-1) / count
 
     def forward(self, x):
 
@@ -155,12 +186,17 @@ class VanillaConvolutionWrapper(nn.Module):
             else:
                 tmp = patch.reshape((-1, self.conv_module.kk))
                 num_of_zeros = self.conv_module.kk - torch.count_nonzero(tmp, dim=1)
-                self.conv_module.sparsity_hist += torch.histogram(num_of_zeros.float().cpu(), bins=self.hist_bin_edges)[0]
+                num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.coarse_in))
+                self.update_batch_sparsity(num_of_zeros)
 
             patch = patch.sum(-1).sum(-1).sum(-1)
             patch = patch.reshape(batch_size, out_channels)
 
             y[:,hi,wi] = patch
+
+        print(self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var)
+        print(self.conv_module.sparsity_cov)
+        print(self.conv_module.sparsity_cor)
 
         if not self.conv_module.kernel_distribution:    
             num_of_zeros = num_of_elements - num_of_nonzeros
