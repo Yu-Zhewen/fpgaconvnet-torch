@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+import os
 import csv
 import copy
 
@@ -22,133 +23,91 @@ def is_coarse_in_feasible(module, coarse_in):
     
     return coarse_in in get_factors(in_channels)
 
-def regsiter_hooks(model, coarse_cfg=None):
-    hist_bin_edges = torch.linspace(0, 1, 11)
-
-    #def log_conv_input_sparsity(m, input, output):
-    #    conv_input = input[0].detach()
-    #    batch_size = conv_input.size()[0]
-    #
-    #    if m.coarse_in == -1:
-    #        num_of_elements = torch.numel(conv_input)
-    #        num_of_zeros = num_of_elements - torch.count_nonzero(conv_input)
-    #        layer_sparsity = num_of_zeros / num_of_elements
-    #        m.layer_sparsity.update(layer_sparsity, batch_size)
-    #    else:
-    #        conv_input = conv_input.transpose(0,1)
-    #        conv_input = conv_input.reshape((m.coarse_in, -1))
-    #        num_of_zeros = m.coarse_in - torch.count_nonzero(conv_input, dim=0)
-    #        coarse_in_sparsity = num_of_zeros / m.coarse_in
-    #        m.sparsity_hist += torch.histogram(coarse_in_sparsity.cpu(), bins=hist_bin_edges)[0]
-
-    handle_list = []
-    conv_layer_index = 0
-    for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d) :#or isinstance(module, nn.Linear):        
-            if coarse_cfg is None:
-                module.coarse_in = -1
-                module.layer_sparsity = AverageMeter('Layer Sparsity', ':.4e')
-            else:
-                #module.sparsity_hist = torch.zeros(len(hist_bin_edges)-1)
-                coarse_in = coarse_cfg[conv_layer_index]
-                assert is_coarse_in_feasible(module, coarse_in)
-                module.coarse_in = coarse_in
-                module.sparsity_mean = torch.zeros(coarse_in)
-                module.sparsity_var = torch.zeros(coarse_in)
-                module.sparsity_cov = torch.zeros(coarse_in, coarse_in)
-                module.kernel_count = 0
-            conv_layer_index += 1
-            # deprecated, the forward hook counts at the conv layer input not at the conv module input (sliding window ignored)
-            #handle = module.register_forward_hook(log_conv_input_sparsity)
-            #handle_list.append(handle)
-
-    return handle_list
-
-def output_sparsity_to_csv(model_name, model, accum_input=False):
-    file_path = "{}_sparsity_log.csv".format(model_name)
+def output_sparsity_to_csv(model_name, model, output_dir):
+    file_path = os.path.join(output_dir, "{}_sparsity_log.csv".format(model_name))
 
     bFirst = True
     for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d) :#or isinstance(module, nn.Linear):
+        if isinstance(module, VanillaConvolutionWrapper):
             if bFirst:
                 bFirst = False
                 with open(file_path, mode='a') as f:
                     csv_writer = csv.writer(f)
-                    csv_header= ["Layer Name", "Layer Type"]
-                    if accum_input:
-                        if not module.kernel_distribution:
-                            csv_header += ["Accum Input Sparsity (Zeros / im2col(NCHW))"]
-                        else:
-                            csv_header += ["KERNEL*KERNEL", "Accum Input Kernel Sparsity Histogram (Zeros / im2col(KK))"]
-                    else:
-                        if module.coarse_in == -1:
-                            csv_header += ["Layer Input Overall Sparsity (Zeros / NCHW)"]
-                        else:
-                            csv_header += ["COARSE_IN", "Layer Input Coarse In Sparsity Histogram (Zeros / COARSE_IN)"]
+                    csv_header = ["Layer Name", "Layer Type"]
+                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity",  "Coarse In"]
 
-                            
                     csv_writer.writerow(csv_header)
 
             with open(file_path, mode='a') as f:
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
-                if accum_input:
-                    if not module.kernel_distribution:
-                        new_row += [module.layer_sparsity.avg.item()]
-                    else:
-                        new_row += [module.kk, module.sparsity_hist.type(torch.int64).tolist()]
-                else:
-                    if module.coarse_in == -1:
-                        new_row += [module.layer_sparsity.avg.item()]
-                    else:
-                        new_row += [module.coarse_in, module.sparsity_hist.type(torch.int64).tolist()]
+                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk, module.coarse_in]
                     
                 csv_writer.writerow(new_row)
 
-def delete_hooks(model, handle_list):
-    for handle in handle_list:
-        handle.remove() 
+            #np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy()) 
+            #np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy()) 
+            #np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
+            #np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",") 
+            #np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",") 
+            #np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
 
-    for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d) :#or isinstance(module, nn.Linear):
-            if hasattr(module, "layer_sparsity"):
-                del module.layer_sparsity
-            if hasattr(module, "sparsity_hist"):
-                del module.sparsity_hist
+            np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
+            np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
+            np.save(os.path.join(output_dir,"{}_{}_ma_correaltion.npy".format(model_name, name)), module.ma_statistics.cor.cpu().numpy())
+            np.savetxt(os.path.join(output_dir,"{}_{}_ma_mean.csv".format(model_name, name)), module.ma_statistics.mean.cpu().numpy(), delimiter=",")
+            np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")  
+            np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
+
+class StreamDataAnalyser():
+    def __init__(self, stream_num):
+        self.count = 0
+        self.stream_num = stream_num     
+        self.mean = torch.zeros(stream_num)
+        self.var  = torch.zeros(stream_num)
+        self.cov  = torch.zeros(stream_num, stream_num)
+        self.cor  = torch.zeros(stream_num, stream_num)
+
+        if torch.cuda.is_available():
+            self.mean = self.mean.cuda()
+            self.var  = self.var.cuda()
+            self.cov  = self.cov.cuda()
+            self.cor  = self.cor.cuda()
+
+    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+    def update(self, newValues):
+        self.var = self.var * self.count
+        self.cov = self.cov * (self.count - 1)
+
+        assert newValues.size()[1] == self.stream_num
+        self.count += newValues.size()[0]
+
+        # newvalues - oldMean
+        delta = torch.subtract(newValues, self.mean.expand_as(newValues))
+        self.mean += torch.sum(delta / self.count, dim=0)
+        # newvalues - newMeant
+        delta2 = torch.subtract(newValues, self.mean.expand_as(newValues))
+
+        self.var += torch.sum(delta * delta2, dim=0)
+        self.cov += torch.matmul(delta.T, delta2) 
+
+        self.var = self.var / self.count # note torch,var uses N-1 by default
+        assert self.count > 1
+        self.cov = self.cov / (self.count - 1)
+        self.cor = self.cov / torch.sqrt(torch.matmul(self.var.unsqueeze(1), self.var.unsqueeze(0))) * (self.count-1) / self.count
+
+def moving_average(a, n):
+    ret = torch.cumsum(a, dim=0)
+    ret[n:] = ret[n:] - ret[:-n]
+    return ret[n - 1:] / n
 
 class VanillaConvolutionWrapper(nn.Module):
-    def __init__(self, conv_module, kernel_distribution=True):
+    def __init__(self, conv_module):
         super(VanillaConvolutionWrapper, self).__init__()
 
         self.conv_module = conv_module
-        self.conv_module.kernel_distribution = kernel_distribution
         self.run_reference = False
-        self.conv_module.kk = np.prod(self.conv_module.kernel_size)
-        self.hist_bin_edges = torch.linspace(0, self.conv_module.kk+1, self.conv_module.kk+2)
-        self.conv_module.sparsity_hist = torch.zeros(len(self.hist_bin_edges)-1)
-
-
-    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
-    def update_batch_sparsity(self, newValues):
-        (count, mean, M2, cov) = self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var, self.conv_module.sparsity_cov
-        M2 = M2 * count
-        cov = cov * (count - 1)
-
-        count += newValues.size()[0]
-
-        # newvalues - oldMean
-        delta = torch.subtract(newValues, mean.expand_as(newValues))
-        mean += torch.sum(delta / count, dim=0)
-        # newvalues - newMeant
-        delta2 = torch.subtract(newValues, mean.expand_as(newValues))
-        M2 += torch.sum(delta * delta2, dim=0)
-
-        cov += torch.matmul(delta.T, delta2) 
-
-        M2 = M2 / count
-        cov = cov / (count - 1)
-        self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var, self.conv_module.sparsity_cov = (count, mean, M2, cov)
-        self.conv_module.sparsity_cor = cov / torch.sqrt(torch.matmul(M2.unsqueeze(1), M2.unsqueeze(0))) * (count-1) / count
+        self.kk = np.prod(self.conv_module.kernel_size)
 
     def forward(self, x):
 
@@ -175,33 +134,42 @@ class VanillaConvolutionWrapper(nn.Module):
             y = y.cuda()
 
         # roll the loop to reduce memory
-        for hi, wi in np.ndindex(patches.shape[1:3]):
-            patch = patches[:,hi,wi].reshape((batch_size, out_channels//groups, groups, in_channels//groups, kh, kw))
-            patch = patch.permute(0, 2, 1, 3, 4, 5)
+        #assert h_windows % self.roll_factor == 0
+        #assert w_windows % self.roll_factor == 0
+        self.roll_factor = h_windows
+
+        for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
+            hstart = hi * (h_windows // self.roll_factor)
+            hend   = (hi+1) * (h_windows // self.roll_factor) 
+            wstart = wi * (w_windows // self.roll_factor)
+            wend   = (wi+1) * (w_windows // self.roll_factor)
+
+            patch = patches[:,hstart:hend,wstart:wend].reshape((batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels//groups, groups, in_channels//groups, kh, kw))
+            patch = patch.permute(0, 1, 2, 4, 3, 5, 6, 7)
             weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
             patch = patch * weight
 
-            if not self.conv_module.kernel_distribution:    
-                num_of_nonzeros += torch.count_nonzero(patch)
+            tmp = patch.reshape((-1, self.kk))
+            num_of_zeros = self.kk - torch.count_nonzero(tmp, dim=1)
+            num_of_zeros = num_of_zeros.reshape((-1, self.coarse_in))
+            self.statistics.update(num_of_zeros)
+
+            if self.ma_data_buffer is None:
+                self.ma_data_buffer = num_of_zeros
             else:
-                tmp = patch.reshape((-1, self.conv_module.kk))
-                num_of_zeros = self.conv_module.kk - torch.count_nonzero(tmp, dim=1)
-                num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.coarse_in))
-                self.update_batch_sparsity(num_of_zeros)
+                self.ma_data_buffer = torch.concat((self.ma_data_buffer, num_of_zeros), dim=0)
+            if self.ma_data_buffer.size()[0] > self.ma_window_size:
+                new_ma = moving_average(self.ma_data_buffer, self.ma_window_size)
+                self.ma_statistics.update(new_ma) 
+                if self.ma_window_size == 1:
+                    self.ma_data_buffer = None
+                else:
+                    self.ma_data_buffer = self.ma_data_buffer[-(self.ma_window_size-1):]
 
             patch = patch.sum(-1).sum(-1).sum(-1)
-            patch = patch.reshape(batch_size, out_channels)
+            patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
 
-            y[:,hi,wi] = patch
-
-        print(self.conv_module.kernel_count, self.conv_module.sparsity_mean, self.conv_module.sparsity_var)
-        print(self.conv_module.sparsity_cov)
-        print(self.conv_module.sparsity_cor)
-
-        if not self.conv_module.kernel_distribution:    
-            num_of_zeros = num_of_elements - num_of_nonzeros
-            layer_sparsity = num_of_zeros / num_of_elements
-            self.conv_module.layer_sparsity.update(layer_sparsity, batch_size)
+            y[:,hstart:hend,wstart:wend] = patch
 
         if self.conv_module.bias is not None:
             bias = self.conv_module.bias.expand(batch_size, h_windows, w_windows, out_channels)
@@ -214,10 +182,28 @@ class VanillaConvolutionWrapper(nn.Module):
 
         return y
 
-def replace_with_vanilla_convolution(model):
+def replace_with_vanilla_convolution(model, coarse_cfg=None, window_size=16):
     replace_dict = {}
+
+    conv_layer_index = 0
     for name, module in model.named_modules():
-        if isinstance(module, nn.Conv2d):
-            replace_dict[module] = VanillaConvolutionWrapper(copy.deepcopy(module))
+        if isinstance(module, nn.Conv2d):#or isinstance(module, nn.Linear):
+            new_module = VanillaConvolutionWrapper(copy.deepcopy(module))
+            if coarse_cfg is None:
+                module.coarse_in = 1
+            else:
+                coarse_in = coarse_cfg[conv_layer_index]
+                assert is_coarse_in_feasible(module, coarse_in)
+
+            #new_module.roll_factor = 14
+            new_module.coarse_in = coarse_in
+
+            new_module.statistics = StreamDataAnalyser(coarse_in)
+            new_module.ma_window_size = window_size
+            new_module.ma_data_buffer = None
+            new_module.ma_statistics = StreamDataAnalyser(coarse_in)
+            
+            replace_dict[module] = new_module 
+            conv_layer_index += 1
 
     replace_modules(model, replace_dict)

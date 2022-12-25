@@ -33,11 +33,21 @@ parser.add_argument('-p', '--print-freq', default=0, type=int,
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 
+parser.add_argument('--output_path', default=None, type=str,
+                    help='output path')
+
 parser.add_argument('--coarse_in', default=[3,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16], type=int, metavar='N', nargs='+',
+                    help='')
+parser.add_argument('--ma_window_size', default=1, type=int,
                     help='')
 
 def imagenet_main():
     args = parser.parse_args()
+
+    if args.output_path == None:
+        args.output_path = os.getcwd() + "/output"
+
+    print(args)
 
     random.seed(0)
     torch.manual_seed(0)
@@ -82,13 +92,11 @@ def imagenet_main():
 
     #model_quantisation(model, val_loader)
 
-    replace_with_vanilla_convolution(model)
-    handle_list = regsiter_hooks(model, args.coarse_in)
+    replace_with_vanilla_convolution(model, args.coarse_in, window_size=args.ma_window_size)
 
     validate(val_loader, model, criterion, args.print_freq)
 
-    output_sparsity_to_csv(args.arch, model, accum_input=True)
-    delete_hooks(model, handle_list)
+    output_sparsity_to_csv(args.arch, model, args.output_path)
 
 if __name__ == '__main__':
     imagenet_main()

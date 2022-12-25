@@ -132,6 +132,7 @@ dmypy.json
 *.pt
 *.pth
 models/
+runlog/
 
 *.csv
 
