@@ -150,66 +150,19 @@ class BasicBlockReluFixed(nn.Module):
         out = self.relu2(out)
 
         return out
-
-# remove residual connection to pass through fpgaConvNet parser
-class BasicBlockNonResidual(nn.Module):
-    def __init__(self, origin_block):
-        super(BasicBlockNonResidual, self).__init__()
-
-        self.conv1 = origin_block.conv1
-        self.bn1 = origin_block.bn1
-        self.relu1 = nn.ReLU()
         
-        self.conv2 = origin_block.conv2
-        self.bn2 = origin_block.bn2
-        self.relu2 = nn.ReLU()
+import torchvision.models as models
 
-    def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu1(out)
+model_names = sorted(name for name in models.__dict__
+    if name.islower() and not name.startswith("__")
+    and callable(models.__dict__[name]))
 
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu2(out)
-
-        return out
-
-def fix_resnet(model, export_to_fpgaconvnet=False):
-    replace_dict = {}
-
-    for name, module in model.named_modules(): 
-        if export_to_fpgaconvnet:
-            if isinstance(module, BasicBlock):
-                replace_dict[module] = BasicBlockNonResidual(copy.deepcopy(module))
-            elif isinstance(module, nn.AdaptiveAvgPool2d):
-                replace_dict[module] = nn.AvgPool2d((7,7))
-        else:
+def load_model(model_name):
+    model = models.__dict__[model_name](pretrained=True)
+    if model_name == 'resnet18':
+        replace_dict = {}
+        for name, module in model.named_modules(): 
             if isinstance(module, BasicBlock):
                 replace_dict[module] = BasicBlockReluFixed(copy.deepcopy(module))
-
-    replace_modules(model, replace_dict)
-
-def fix_mobilenet(model, export_to_fpgaconvnet=False):
-
-    def _forward_impl(self, x):
-        # This exists since TorchScript doesn't support inheritance, so the superclass method
-        # (this one) needs to have a name other than `forward` that can be accessed in a subclass
-        x = self.features(x)
-        # Cannot use "squeeze" as batch-size can be 1
-        x = self.avg_pool2d(x)
-        x = torch.flatten(x, 1)
-        x = self.classifier(x)
-        return x
-
-    model.avg_pool2d = nn.AvgPool2d((7,7))
-    model._forward_impl = types.MethodType(_forward_impl, model)
-
-    replace_dict = {}
-    if export_to_fpgaconvnet:
-        for name, module in model.named_modules():
-            if isinstance(module, InvertedResidual):
-                module.use_res_connect = False
-            if isinstance(module, nn.ReLU6):
-                replace_dict[module] = nn.ReLU()
-    replace_modules(model, replace_dict)
+        replace_modules(model, replace_dict)
+    return model

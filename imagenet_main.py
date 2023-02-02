@@ -7,14 +7,10 @@ import torch.nn as nn
 import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
-import torchvision.models as models
 
+from utils import *
 from sparsity_utils import *
 from quan_utils import *
-
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
@@ -54,7 +50,7 @@ def imagenet_main():
 
     # create model
     print("=> using pre-trained model '{}'".format(args.arch))
-    model = models.__dict__[args.arch](pretrained=True)
+    model = load_model(args.arch)
     random_input = torch.randn(1, 3, 224, 224)
 
     if args.gpu is not None:
@@ -82,13 +78,6 @@ def imagenet_main():
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
-
-    if args.arch == "resnet18":
-        fix_resnet(model, export_to_fpgaconvnet=False)
-    elif args.arch == "mobilenet_v2":
-        fix_mobilenet(model, export_to_fpgaconvnet=False)
-
-    #torch.onnx.export(model, random_input, args.arch+".onnx", verbose=False, keep_initializers_as_inputs=True) 
 
     #model_quantisation(model, val_loader)
 
