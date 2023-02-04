@@ -19,12 +19,13 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
+
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('-b', '--batch-size', default=128, type=int,
+parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N',
                     help='mini-batch size')
-parser.add_argument('-p', '--print-freq', default=0, type=int,
+parser.add_argument('-p', '--print-freq', default=1, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
@@ -32,8 +33,6 @@ parser.add_argument('--gpu', default=None, type=int,
 parser.add_argument('--output_path', default=None, type=str,
                     help='output path')
 
-parser.add_argument('--coarse_in', default=[3,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16], type=int, metavar='N', nargs='+',
-                    help='')
 parser.add_argument('--ma_window_size', default=1, type=int,
                     help='')
 
@@ -58,14 +57,17 @@ def imagenet_main():
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
         random_input = random_input.cuda()
+        valdir = os.path.join(args.data, 'val')
+        traindir = os.path.join(args.data, 'train')
     else:
         print('using CPU, this will be slow')
+        valdir = os.path.join(args.data, 'val')
+        traindir = os.path.join(args.data, 'val')
    
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     # Data loading code
-    valdir = os.path.join(args.data, 'val')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
@@ -79,12 +81,56 @@ def imagenet_main():
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
 
-    #model_quantisation(model, val_loader)
+    train_dataset = datasets.ImageFolder(traindir, transforms.Compose([
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize,
+                ]))
+    calibrate_size = 1000
+    # per class few sampling, different from random_split
+    # https://github.com/mit-han-lab/proxylessnas/blob/6e7a96b7190963e404d1cf9b37a320501e62b0a0/search/data_providers/imagenet.py#L21
+    assert calibrate_size % 1000 == 0
+    rand_indexes = torch.randperm(len(train_dataset)).tolist()
+    train_labels = [sample[1] for sample in train_dataset.samples]
+    per_class_remain = [calibrate_size // 1000] * 1000
+    train_indexes, calibrate_indexes = [], []
+    for idx in rand_indexes:
+        label = train_labels[idx]
+        if per_class_remain[label] > 0:
+            calibrate_indexes.append(idx)
+            per_class_remain[label] -= 1
+        else:
+            train_indexes.append(idx)
 
-    replace_with_vanilla_convolution(model, args.coarse_in, window_size=args.ma_window_size)
+    #train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indexes)
+    calibrate_sampler = torch.utils.data.sampler.SubsetRandomSampler(calibrate_indexes)
 
-    validate(val_loader, model, criterion, args.print_freq)
+    #train_loader = torch.utils.data.DataLoader(
+    #    train_dataset,  
+    #    batch_size=args.batch_size,
+    #    num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
+    calibrate_dataset = datasets.ImageFolder(traindir, transforms.Compose([
+                        transforms.Resize(256),
+                        transforms.CenterCrop(224),
+                        transforms.ToTensor(),
+                        normalize,
+                    ]))
+
+    calibrate_loader = torch.utils.data.DataLoader(
+        calibrate_dataset, 
+        batch_size=args.batch_size,
+        num_workers=args.workers, pin_memory=True, sampler=calibrate_sampler)
+
+    # todo: measure post-quantisation results???
+    #model_quantisation(model, calibrate_loader)
+    #validate(val_loader, model, criterion)
+    
+    # use vanilla convolution to measure 
+    # post-activation (post-sliding-window, to be more precise) sparsity
+    replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
+    validate(calibrate_loader, model, criterion, args.print_freq)
     output_sparsity_to_csv(args.arch, model, args.output_path)
 
 if __name__ == '__main__':

@@ -10,18 +10,7 @@ from functools import reduce
 import torch.nn.functional as F
 
 import numpy as np
-
-def get_factors(n):
-    return list(set(reduce(list.__add__,
-                ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0))))
-
-def is_coarse_in_feasible(module, coarse_in):
-    if isinstance(module, nn.Conv2d):
-        in_channels = module.in_channels
-    #elif isinstance(module, nn.Linear):
-    #    in_channels = module.in_features
-    
-    return coarse_in in get_factors(in_channels)
+import math
 
 def output_sparsity_to_csv(model_name, model, output_dir):
     file_path = os.path.join(output_dir, "{}_sparsity_log.csv".format(model_name))
@@ -34,23 +23,23 @@ def output_sparsity_to_csv(model_name, model, output_dir):
                 with open(file_path, mode='a') as f:
                     csv_writer = csv.writer(f)
                     csv_header = ["Layer Name", "Layer Type"]
-                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity",  "Coarse In"]
+                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity"]
 
                     csv_writer.writerow(csv_header)
 
             with open(file_path, mode='a') as f:
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
-                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk, module.coarse_in]
+                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk]
                     
                 csv_writer.writerow(new_row)
 
-            #np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy()) 
-            #np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy()) 
-            #np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
-            #np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",") 
-            #np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",") 
-            #np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
+            np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy()) 
+            np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy()) 
+            np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
+            np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",") 
+            np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",") 
+            np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
 
             np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
@@ -134,9 +123,9 @@ class VanillaConvolutionWrapper(nn.Module):
             y = y.cuda()
 
         # roll the loop to reduce memory
-        #assert h_windows % self.roll_factor == 0
-        #assert w_windows % self.roll_factor == 0
-        self.roll_factor = h_windows
+        self.roll_factor = 7
+        assert h_windows % self.roll_factor == 0, "h_windows: {}, roll_factor: {}".format(h_windows, self.roll_factor)
+        assert w_windows % self.roll_factor == 0, "w_windows: {}, roll_factor: {}".format(w_windows, self.roll_factor)
 
         for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
             hstart = hi * (h_windows // self.roll_factor)
@@ -151,7 +140,7 @@ class VanillaConvolutionWrapper(nn.Module):
 
             tmp = patch.reshape((-1, self.kk))
             num_of_zeros = self.kk - torch.count_nonzero(tmp, dim=1)
-            num_of_zeros = num_of_zeros.reshape((-1, self.coarse_in))
+            num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.in_channels))
             self.statistics.update(num_of_zeros)
 
             if self.ma_data_buffer is None:
@@ -182,26 +171,18 @@ class VanillaConvolutionWrapper(nn.Module):
 
         return y
 
-def replace_with_vanilla_convolution(model, coarse_cfg=None, window_size=16):
+def replace_with_vanilla_convolution(model, window_size=16):
     replace_dict = {}
 
     conv_layer_index = 0
     for name, module in model.named_modules():
         if isinstance(module, nn.Conv2d):#or isinstance(module, nn.Linear):
             new_module = VanillaConvolutionWrapper(copy.deepcopy(module))
-            if coarse_cfg is None:
-                module.coarse_in = 1
-            else:
-                coarse_in = coarse_cfg[conv_layer_index]
-                assert is_coarse_in_feasible(module, coarse_in)
 
-            #new_module.roll_factor = 14
-            new_module.coarse_in = coarse_in
-
-            new_module.statistics = StreamDataAnalyser(coarse_in)
+            new_module.statistics = StreamDataAnalyser(module.in_channels)
             new_module.ma_window_size = window_size
             new_module.ma_data_buffer = None
-            new_module.ma_statistics = StreamDataAnalyser(coarse_in)
+            new_module.ma_statistics = StreamDataAnalyser(module.in_channels)
             
             replace_dict[module] = new_module 
             conv_layer_index += 1
