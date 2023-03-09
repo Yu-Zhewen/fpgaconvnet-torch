@@ -211,7 +211,7 @@ def activation_quantization(model, wordlength, quantization_method, calibrate_lo
 
     return model
 
-def model_quantisation(model, val_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16):
+def model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16):
     weight_quantizer = WeightQuantizer(model)
 
     for name, module in model.named_modules(): 
@@ -219,4 +219,4 @@ def model_quantisation(model, val_loader, quantization_method=QuanMode.NETWORK_F
             quantized_weight = weight_quantizer.AsymmetricQuantHandler(module.weight, weight_width, quantization_method)
             module.weight.data.copy_(quantized_weight)
 
-    activation_quantization(model, data_width, quantization_method, val_loader)
+    activation_quantization(model, data_width, quantization_method, calibrate_loader)

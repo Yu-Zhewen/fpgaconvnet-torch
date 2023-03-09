@@ -41,12 +41,13 @@ def output_sparsity_to_csv(model_name, model, output_dir):
             np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",") 
             np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
 
-            np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
-            np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
-            np.save(os.path.join(output_dir,"{}_{}_ma_correaltion.npy".format(model_name, name)), module.ma_statistics.cor.cpu().numpy())
-            np.savetxt(os.path.join(output_dir,"{}_{}_ma_mean.csv".format(model_name, name)), module.ma_statistics.mean.cpu().numpy(), delimiter=",")
-            np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")  
-            np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
+            if module.ma_statistics is not None:
+                np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
+                np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
+                np.save(os.path.join(output_dir,"{}_{}_ma_correaltion.npy".format(model_name, name)), module.ma_statistics.cor.cpu().numpy())
+                np.savetxt(os.path.join(output_dir,"{}_{}_ma_mean.csv".format(model_name, name)), module.ma_statistics.mean.cpu().numpy(), delimiter=",")
+                np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")  
+                np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
 
 class StreamDataAnalyser():
     def __init__(self, stream_num):
@@ -143,17 +144,18 @@ class VanillaConvolutionWrapper(nn.Module):
             num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.in_channels))
             self.statistics.update(num_of_zeros)
 
-            if self.ma_data_buffer is None:
-                self.ma_data_buffer = num_of_zeros
-            else:
-                self.ma_data_buffer = torch.concat((self.ma_data_buffer, num_of_zeros), dim=0)
-            if self.ma_data_buffer.size()[0] > self.ma_window_size:
-                new_ma = moving_average(self.ma_data_buffer, self.ma_window_size)
-                self.ma_statistics.update(new_ma) 
-                if self.ma_window_size == 1:
-                    self.ma_data_buffer = None
+            if self.ma_statistics is not None:
+                if self.ma_data_buffer is None:
+                    self.ma_data_buffer = num_of_zeros
                 else:
-                    self.ma_data_buffer = self.ma_data_buffer[-(self.ma_window_size-1):]
+                    self.ma_data_buffer = torch.concat((self.ma_data_buffer, num_of_zeros), dim=0)
+                if self.ma_data_buffer.size()[0] > self.ma_window_size:
+                    new_ma = moving_average(self.ma_data_buffer, self.ma_window_size)
+                    self.ma_statistics.update(new_ma) 
+                    if self.ma_window_size == 1:
+                        self.ma_data_buffer = None
+                    else:
+                        self.ma_data_buffer = self.ma_data_buffer[-(self.ma_window_size-1):]
 
             patch = patch.sum(-1).sum(-1).sum(-1)
             patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
@@ -171,7 +173,7 @@ class VanillaConvolutionWrapper(nn.Module):
 
         return y
 
-def replace_with_vanilla_convolution(model, window_size=16):
+def replace_with_vanilla_convolution(model, window_size=None):
     replace_dict = {}
 
     conv_layer_index = 0
@@ -182,7 +184,10 @@ def replace_with_vanilla_convolution(model, window_size=16):
             new_module.statistics = StreamDataAnalyser(module.in_channels)
             new_module.ma_window_size = window_size
             new_module.ma_data_buffer = None
-            new_module.ma_statistics = StreamDataAnalyser(module.in_channels)
+            if window_size is None:
+                new_module.ma_statistics = None
+            else:
+                new_module.ma_statistics = StreamDataAnalyser(module.in_channels)
             
             replace_dict[module] = new_module 
             conv_layer_index += 1

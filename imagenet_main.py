@@ -87,7 +87,7 @@ def imagenet_main():
                     transforms.ToTensor(),
                     normalize,
                 ]))
-    calibrate_size = 1000
+    calibrate_size = 50000
     # per class few sampling, different from random_split
     # https://github.com/mit-han-lab/proxylessnas/blob/6e7a96b7190963e404d1cf9b37a320501e62b0a0/search/data_providers/imagenet.py#L21
     assert calibrate_size % 1000 == 0
@@ -124,9 +124,8 @@ def imagenet_main():
         num_workers=args.workers, pin_memory=True, sampler=calibrate_sampler)
 
     # todo: measure post-quantisation results???
-    #model_quantisation(model, calibrate_loader)
-    #validate(val_loader, model, criterion)
-    
+    model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16)
+    validate(val_loader, model, criterion)
     # use vanilla convolution to measure 
     # post-activation (post-sliding-window, to be more precise) sparsity
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
