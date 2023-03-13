@@ -5,6 +5,9 @@ from torchvision.models.resnet import BasicBlock
 from torchvision.models.mobilenetv2 import InvertedResidual
 import copy
 import types
+from repvgg.repvgg import repvgg_model_convert, get_RepVGG_func_by_name
+import numpy as np
+import functools
 
 def validate(val_loader, model, criterion, print_freq=0):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -158,6 +161,12 @@ model_names = sorted(name for name in models.__dict__
     and callable(models.__dict__[name]))
 
 def load_model(model_name):
+    if model_name == "repvgg-a0":
+        model = get_RepVGG_func_by_name('RepVGG-A0')()
+        model.load_state_dict(torch.load('repvgg/RepVGG-A0-train.pth'))
+        model = repvgg_model_convert(model)
+        return model
+
     model = models.__dict__[model_name](pretrained=True)
     if model_name == 'resnet18':
         replace_dict = {}
@@ -166,3 +175,6 @@ def load_model(model_name):
                 replace_dict[module] = BasicBlockReluFixed(copy.deepcopy(module))
         replace_modules(model, replace_dict)
     return model
+
+def get_factors(n):
+    return np.sort(list(set(functools.reduce(list.__add__, ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))))

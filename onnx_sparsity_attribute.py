@@ -1,10 +1,11 @@
 import os
 import numpy as np
 import torch
+import torch.nn as nn
 import onnx
 import argparse
 import csv
-from utils import load_model, model_names
+from utils import load_model, model_names, replace_modules
 
 def torch_onnx_exporter(model, model_name, random_input, output_path):
     if model_name == "mobilenet_v2":
@@ -13,7 +14,7 @@ def torch_onnx_exporter(model, model_name, random_input, output_path):
             # todo: relu6 creates clip node
             if isinstance(module, nn.ReLU6):
                 replace_dict[module] = nn.ReLU()
-        _replace_modules(model, replace_dict)
+        replace_modules(model, replace_dict)
     torch.onnx.export(model, random_input, output_path, verbose=False, keep_initializers_as_inputs=True)
 
 # https://github.com/Xilinx/finn-base/blob/7c2603a95e90e4de2575020e575c24eab6a15889/src/finn/custom_op/base.py
@@ -58,13 +59,13 @@ def annotate_sparsity(model_name, onnx_model, data_path):
             set_nodeattr(node, "input sparsity", sparsity_data)
 
 parser = argparse.ArgumentParser(description='Export ONNX model with sparsity attribute')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='repvgg-a0',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
 parser.add_argument('--data', metavar='DIR', default="runlog/sparsity_run_ma_window_size1_2023_02_03_16_57_36_500547",
                     help='path to onnx model')  
-parser.add_argument('--dense_onnx_path', metavar='DIR', default="models/resnet18.onnx",
+parser.add_argument('--dense_onnx_path', metavar='DIR', default="models/repvgg-a0.onnx",
                     help='path to onnx model')              
 parser.add_argument('--sparse_onnx_path', metavar='DIR', default="models/resnet18_sparse.onnx",
                     help='path to onnx model')      
@@ -75,5 +76,5 @@ torch_model = load_model(args.arch)
 torch_onnx_exporter(torch_model, args.arch, torch.randn(1, 3, 224, 224), args.dense_onnx_path)
 onnx_model = onnx.load(args.dense_onnx_path)
 annotate_quantisation(onnx_model, 16, 16, 32, False)
-annotate_sparsity(args.arch, onnx_model, args.data)
-onnx.save(onnx_model, args.sparse_onnx_path)
+#annotate_sparsity(args.arch, onnx_model, args.data)
+onnx.save(onnx_model, args.dense_onnx_path)

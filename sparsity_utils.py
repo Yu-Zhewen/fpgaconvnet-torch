@@ -6,7 +6,6 @@ import csv
 import copy
 
 from utils import *
-from functools import reduce
 import torch.nn.functional as F
 
 import numpy as np
@@ -125,8 +124,9 @@ class VanillaConvolutionWrapper(nn.Module):
 
         # roll the loop to reduce memory
         self.roll_factor = 7
-        assert h_windows % self.roll_factor == 0, "h_windows: {}, roll_factor: {}".format(h_windows, self.roll_factor)
-        assert w_windows % self.roll_factor == 0, "w_windows: {}, roll_factor: {}".format(w_windows, self.roll_factor)
+        assert h_windows == w_windows
+        if h_windows % self.roll_factor != 0:
+            self.roll_factor = get_factors(h_windows)[1]
 
         for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
             hstart = hi * (h_windows // self.roll_factor)

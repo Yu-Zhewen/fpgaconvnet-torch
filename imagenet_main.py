@@ -16,7 +16,6 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                     help='path to dataset')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
-                    choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
 
@@ -25,7 +24,7 @@ parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
 parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N',
                     help='mini-batch size')
-parser.add_argument('-p', '--print-freq', default=1, type=int,
+parser.add_argument('-p', '--print-freq', default=10, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
@@ -33,7 +32,7 @@ parser.add_argument('--gpu', default=None, type=int,
 parser.add_argument('--output_path', default=None, type=str,
                     help='output path')
 
-parser.add_argument('--ma_window_size', default=1, type=int,
+parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
 
 def imagenet_main():
