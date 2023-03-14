@@ -34,14 +34,23 @@ def annotate_quantisation(model, weight_width, data_width, acc_width, block_floa
             set_nodeattr(node, "data_width", data_width)
 
 def layer_name_translation(model_name, onnx_name):
-    if model_name == "resnet18":
-        onnx_name = onnx_name.split("/")[1:]
-        if len(onnx_name) == 2: # first conv
-            torch_name = onnx_name[0]
+    onnx_name = onnx_name.split("/")
+    if model_name in ["resnet18", "resnet50"]:
+        if len(onnx_name) == 3: # first conv
+            torch_name = onnx_name[1]+ ".1"
         else:
-            assert len(onnx_name) in [4,5] # block conv or downsample conv
-            torch_name = onnx_name[1] + "." +onnx_name[-2]
-
+            assert len(onnx_name) in [5,6] 
+            torch_name = onnx_name[2] + "." +onnx_name[-2]+ ".1"
+    elif model_name == "mobilenet_v2":
+        if len(onnx_name) == 5: # first and last conv
+            torch_name = onnx_name[-2] + ".1"
+        else:
+            assert len(onnx_name) in [6,7]
+            torch_name = onnx_name[2] + "." + onnx_name[-2] + ".1"
+    elif model_name in ["alexnet", "vgg11", "vgg16"]:
+        torch_name = onnx_name[-2] + ".1"
+    elif model_name == "repvgg-a0":
+        torch_name = ".".join(onnx_name[1:-1]) + ".1"
     return torch_name
 
 def annotate_sparsity(model_name, onnx_model, data_path):
@@ -59,15 +68,15 @@ def annotate_sparsity(model_name, onnx_model, data_path):
             set_nodeattr(node, "input sparsity", sparsity_data)
 
 parser = argparse.ArgumentParser(description='Export ONNX model with sparsity attribute')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='repvgg-a0',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
-parser.add_argument('--data', metavar='DIR', default="runlog/sparsity_run_ma_window_size1_2023_02_03_16_57_36_500547",
+parser.add_argument('--data', metavar='DIR', default="runlog/per_channel/vgg16_sparsity_run_50k_2023_03_13_10_02_17_996357",
                     help='path to onnx model')  
-parser.add_argument('--dense_onnx_path', metavar='DIR', default="models/repvgg-a0.onnx",
+parser.add_argument('--dense_onnx_path', metavar='DIR', default="models/vgg16.onnx",
                     help='path to onnx model')              
-parser.add_argument('--sparse_onnx_path', metavar='DIR', default="models/resnet18_sparse.onnx",
+parser.add_argument('--sparse_onnx_path', metavar='DIR', default="models/vgg16_sparse.onnx",
                     help='path to onnx model')      
 
 args = parser.parse_args()
@@ -76,5 +85,5 @@ torch_model = load_model(args.arch)
 torch_onnx_exporter(torch_model, args.arch, torch.randn(1, 3, 224, 224), args.dense_onnx_path)
 onnx_model = onnx.load(args.dense_onnx_path)
 annotate_quantisation(onnx_model, 16, 16, 32, False)
-#annotate_sparsity(args.arch, onnx_model, args.data)
-onnx.save(onnx_model, args.dense_onnx_path)
+annotate_sparsity(args.arch, onnx_model, args.data)
+onnx.save(onnx_model, args.sparse_onnx_path)
