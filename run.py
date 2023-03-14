@@ -27,7 +27,7 @@ for window_size in sweep_range:
     os.system(regsys_cmd + " 2>&1 | tee -a " + log_file)
 '''
 
-for model_name in ["vgg11", "vgg16"]:
+for model_name in ["resnet18"]:
     test_name = "{}_sparsity_run_50k".format(model_name)
 
     start_time = datetime.datetime.now()
@@ -36,7 +36,7 @@ for model_name in ["vgg11", "vgg16"]:
     os.makedirs("runlog/" + log_dir)
     log_file="runlog/" + log_dir + "/log.txt"
 
-    regsys_cmd="python3 -u imagenet_main.py --output_path " + "runlog/" + log_dir + " --gpu " + str(args.gpu) + " -a " + model_name
+    regsys_cmd="python3 -u imagenet_main.py --output_path " + "runlog/" + log_dir + " --gpu " + str(args.gpu) + " -a " + model_name + f" --data /data/imagenet -b 4"
 
     with open(log_file, "w") as log_fp:
         log_fp.write(regsys_cmd + '\n')

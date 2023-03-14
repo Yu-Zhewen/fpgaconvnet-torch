@@ -30,32 +30,35 @@ def output_sparsity_to_csv(model_name, model, output_dir):
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
                 new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk]
-                    
+
                 csv_writer.writerow(new_row)
 
-            np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy()) 
-            np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy()) 
+            np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy())
+            np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
-            np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",") 
-            np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",") 
-            np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
+            np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
+            # np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",")
+            # np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",")
+            # np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
+            # np.savetxt(os.path.join(output_dir,"{}_{}_sparsity.csv".format(model_name, name)), module.statistics.sparsity, delimiter=",")
 
             if module.ma_statistics is not None:
                 np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
                 np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
                 np.save(os.path.join(output_dir,"{}_{}_ma_correaltion.npy".format(model_name, name)), module.ma_statistics.cor.cpu().numpy())
                 np.savetxt(os.path.join(output_dir,"{}_{}_ma_mean.csv".format(model_name, name)), module.ma_statistics.mean.cpu().numpy(), delimiter=",")
-                np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")  
+                np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")
                 np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
 
 class StreamDataAnalyser():
     def __init__(self, stream_num):
         self.count = 0
-        self.stream_num = stream_num     
+        self.stream_num = stream_num
         self.mean = torch.zeros(stream_num)
         self.var  = torch.zeros(stream_num)
         self.cov  = torch.zeros(stream_num, stream_num)
         self.cor  = torch.zeros(stream_num, stream_num)
+        self.sparsity = np.empty(shape=[0,stream_num])
 
         if torch.cuda.is_available():
             self.mean = self.mean.cuda()
@@ -68,6 +71,8 @@ class StreamDataAnalyser():
         self.var = self.var * self.count
         self.cov = self.cov * (self.count - 1)
 
+        self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
+
         assert newValues.size()[1] == self.stream_num
         self.count += newValues.size()[0]
 
@@ -78,7 +83,7 @@ class StreamDataAnalyser():
         delta2 = torch.subtract(newValues, self.mean.expand_as(newValues))
 
         self.var += torch.sum(delta * delta2, dim=0)
-        self.cov += torch.matmul(delta.T, delta2) 
+        self.cov += torch.matmul(delta.T, delta2)
 
         self.var = self.var / self.count # note torch,var uses N-1 by default
         assert self.count > 1
@@ -130,7 +135,7 @@ class VanillaConvolutionWrapper(nn.Module):
 
         for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
             hstart = hi * (h_windows // self.roll_factor)
-            hend   = (hi+1) * (h_windows // self.roll_factor) 
+            hend   = (hi+1) * (h_windows // self.roll_factor)
             wstart = wi * (w_windows // self.roll_factor)
             wend   = (wi+1) * (w_windows // self.roll_factor)
 
@@ -151,7 +156,7 @@ class VanillaConvolutionWrapper(nn.Module):
                     self.ma_data_buffer = torch.concat((self.ma_data_buffer, num_of_zeros), dim=0)
                 if self.ma_data_buffer.size()[0] > self.ma_window_size:
                     new_ma = moving_average(self.ma_data_buffer, self.ma_window_size)
-                    self.ma_statistics.update(new_ma) 
+                    self.ma_statistics.update(new_ma)
                     if self.ma_window_size == 1:
                         self.ma_data_buffer = None
                     else:
@@ -188,8 +193,8 @@ def replace_with_vanilla_convolution(model, window_size=None):
                 new_module.ma_statistics = None
             else:
                 new_module.ma_statistics = StreamDataAnalyser(module.in_channels)
-            
-            replace_dict[module] = new_module 
+
+            replace_dict[module] = new_module
             conv_layer_index += 1
 
     replace_modules(model, replace_dict)

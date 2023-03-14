@@ -34,6 +34,9 @@ parser.add_argument('--output_path', default=None, type=str,
 
 parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
+parser.add_argument('--calibration-size', default=4, type=int,
+                    help='')
+
 
 def imagenet_main():
     args = parser.parse_args()
@@ -56,13 +59,13 @@ def imagenet_main():
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
         random_input = random_input.cuda()
-        valdir = os.path.join(args.data, 'val')
+        valdir = os.path.join(args.data, 'validation')
         traindir = os.path.join(args.data, 'train')
     else:
         print('using CPU, this will be slow')
         valdir = os.path.join(args.data, 'val')
         traindir = os.path.join(args.data, 'val')
-   
+
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
@@ -86,10 +89,12 @@ def imagenet_main():
                     transforms.ToTensor(),
                     normalize,
                 ]))
-    calibrate_size = 50000
+    # calibrate_size = 50000
+    calibrate_size = args.calibration_size
     # per class few sampling, different from random_split
     # https://github.com/mit-han-lab/proxylessnas/blob/6e7a96b7190963e404d1cf9b37a320501e62b0a0/search/data_providers/imagenet.py#L21
-    assert calibrate_size % 1000 == 0
+    # assert calibrate_size % 1000 == 0
+    """
     rand_indexes = torch.randperm(len(train_dataset)).tolist()
     train_labels = [sample[1] for sample in train_dataset.samples]
     per_class_remain = [calibrate_size // 1000] * 1000
@@ -101,12 +106,15 @@ def imagenet_main():
             per_class_remain[label] -= 1
         else:
             train_indexes.append(idx)
+    """
+    rand_indexes = torch.randperm(len(train_dataset)).tolist()
+    calibrate_indexes = random.choices(rand_indexes, k=calibrate_size)
 
     #train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_indexes)
     calibrate_sampler = torch.utils.data.sampler.SubsetRandomSampler(calibrate_indexes)
 
     #train_loader = torch.utils.data.DataLoader(
-    #    train_dataset,  
+    #    train_dataset,
     #    batch_size=args.batch_size,
     #    num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
@@ -118,14 +126,14 @@ def imagenet_main():
                     ]))
 
     calibrate_loader = torch.utils.data.DataLoader(
-        calibrate_dataset, 
+        calibrate_dataset,
         batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, sampler=calibrate_sampler)
 
     # todo: measure post-quantisation results???
     model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16)
     validate(val_loader, model, criterion)
-    # use vanilla convolution to measure 
+    # use vanilla convolution to measure
     # post-activation (post-sliding-window, to be more precise) sparsity
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
     validate(calibrate_loader, model, criterion, args.print_freq)
