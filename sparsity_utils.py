@@ -105,6 +105,9 @@ class VanillaConvolutionWrapper(nn.Module):
 
     def forward(self, x):
 
+        with open(f"input.dat", 'w') as f:
+            f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
+
         # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
         assert self.conv_module.padding_mode == 'zeros'
         x_padded = F.pad(input=x, pad=self.conv_module._reversed_padding_repeated_twice, mode='constant', value=0)
