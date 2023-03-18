@@ -66,6 +66,7 @@ def imagenet_main():
         valdir = os.path.join(args.data, 'val')
         traindir = os.path.join(args.data, 'val')
 
+    calculate_macs_params(model, random_input, False, inference_mode=True)
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 

@@ -8,6 +8,8 @@ import types
 from repvgg.repvgg import repvgg_model_convert, get_RepVGG_func_by_name
 import numpy as np
 import functools
+import thop
+from thop.vision.basic_hooks import zero_ops
 
 def validate(val_loader, model, criterion, print_freq=0):
     batch_time = AverageMeter('Time', ':6.3f')
@@ -178,3 +180,33 @@ def load_model(model_name):
 
 def get_factors(n):
     return np.sort(list(set(functools.reduce(list.__add__, ([i, n//i] for i in range(1, int(n**0.5) + 1) if n % i == 0)))))
+
+def calculate_macs_params(model, input, turn_on_warnings, verbose=True, inference_mode=True, custom_ops={},custom_compensation={}):
+    # total_ops and total_params are in cpu, 
+    # and they are not completedly removed after the profile (which they should be?)
+    
+    if torch.cuda.is_available():
+        model.cuda()
+        input = input.cuda()
+    if isinstance(model, torch.nn.DataParallel):
+        model = copy.deepcopy(model.module)
+    else:
+        model = copy.deepcopy(model)
+
+    # makes a difference on compact models such as mobilenetv2/v3 and efficeintnetb0
+    if inference_mode:
+        custom_ops[nn.BatchNorm2d] = zero_ops
+
+    # MACs and Parameters data
+    macs, params, layer_info = thop.profile(model, inputs=(input, ), custom_ops=custom_ops, verbose=turn_on_warnings, ret_layer_info=True)
+
+    # pruning by mask
+    for macs_compensation, params_compensation in custom_compensation.values():
+        macs -= macs_compensation
+        params -= params_compensation
+
+    format_macs, format_params = thop.clever_format([macs, params], "%.3f")
+    if verbose:
+        print("MACs:", format_macs, "Params:", format_params)
+        print(layer_info)
+    return macs, params

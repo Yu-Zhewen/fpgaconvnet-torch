@@ -4,17 +4,16 @@ import json
 import re
 from fpgaconvnet.optimiser.cli import main
 
-def fpgaconvnet_runner():
-    model_name = "alexnet"
+def fpgaconvnet_runner(model_name):
     onnx_path = "/home/zy18/codeDev/sparseCNN/models/{}.onnx".format(model_name)
 
     output_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER_SPARSE'], 'outputs/sparse/{}'.format(model_name))
 
     platform_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER_SPARSE'], 'examples/platforms/u250.toml')
 
-    if model_name in ["resnet18", "resnet50", "mobilenet_v2"]:
+    if model_name in ["resnet18", "resnet50", "mobilenet_v2", "resnet18_sparse", "resnet50_sparse", "mobilenet_v2_sparse"]:
         optimiser_config_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER_SPARSE'], 'examples/greedy_partition_throughput_residual.toml')
-    elif model_name in ["repvgg-a0", "vgg11", "vgg16", "alexnet"]:
+    elif model_name in ["repvgg-a0", "vgg11", "vgg16", "alexnet", "repvgg-a0_sparse", "vgg11_sparse", "vgg16_sparse", "alexnet_sparse"]:
         optimiser_config_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER_SPARSE'], 'examples/greedy_partition_throughput.toml')
 
     saved_argv = sys.argv
@@ -46,5 +45,9 @@ def unit_test():
     print(min(a.get_stream_sparsity()))
     print(min(a.get_stream_sparsity(interleave=False)))
 if __name__ == "__main__":
-    fpgaconvnet_runner()
+    results = {}
+    for model_name in ["resnet18", "resnet18_sparse", "resnet50", "resnet50_sparse", "mobilenet_v2", "mobilenet_v2_sparse", "repvgg-a0", "repvgg-a0_sparse", "vgg11", "vgg11_sparse", "vgg16", "vgg16_sparse", "alexnet", "alexnet_sparse"]:
+        report = fpgaconvnet_runner(model_name)
+        results[model_name] = report["network"]["performance"]["throughput"]
+        print(results)
     #unit_test()
