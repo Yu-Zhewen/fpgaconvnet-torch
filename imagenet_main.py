@@ -11,6 +11,7 @@ import torchvision.datasets as datasets
 from utils import *
 from sparsity_utils import *
 from quan_utils import *
+from relu_utils import *
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
 parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
@@ -35,6 +36,8 @@ parser.add_argument('--output_path', default=None, type=str,
 parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
 parser.add_argument('--calibration-size', default=4, type=int,
+                    help='')
+parser.add_argument('--relu_threshold', default=0, type=float,
                     help='')
 
 
@@ -137,6 +140,7 @@ def imagenet_main():
     # use vanilla convolution to measure
     # post-activation (post-sliding-window, to be more precise) sparsity
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
+    replace_with_variable_relu(model, threshold=args.relu_threshold)
     validate(calibrate_loader, model, criterion, args.print_freq)
     output_sparsity_to_csv(args.arch, model, args.output_path)
 

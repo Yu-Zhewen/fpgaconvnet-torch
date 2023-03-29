@@ -41,18 +41,18 @@ def linear_dequantize(x_quan, scaling_factor, zero_point):
 
     return x 
 
-
+#Asymmetric Quantisation: x_q = round((x_f - min_xf) * (2^n - 1) / (max_xf - min_xf))
 def asymmetric_linear_no_clipping(wordlength, x_min, x_max):
 
-    scaling_factor = (2**wordlength - 1) / torch.clamp((x_max - x_min), min=1e-8)
-    zero_point = scaling_factor * x_min
+    scaling_factor = (2**wordlength - 1) / torch.clamp((x_max - x_min), min=1e-8) # Calculates scaling factor as shown in equation for function above
+    zero_point = scaling_factor * x_min #Corresponds to most negative value represented by wlen-bit
 
     if isinstance(zero_point, torch.Tensor):
         zero_point = zero_point.round()
     else:
         zero_point = float(round(zero_point))
 
-    zero_point += 2**(wordlength - 1)
+    zero_point += 2**(wordlength - 1) #Corresponds to zero by adding 2^(wlen - 1)
 
     return scaling_factor, zero_point
 
@@ -62,6 +62,7 @@ def saturate(w_quan, wordlength):
 
     return w_quan
 
+#Takes a model as input and can call a function with wordlength and quantisation method to quantise base don quantisation method
 class WeightQuantizer():
     def __init__(self, model):
         bFirst = True
@@ -70,10 +71,10 @@ class WeightQuantizer():
             if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
                 if bFirst:
                     bFirst = False
-                    self.w_min = torch.min(module.weight)
-                    self.w_max = torch.max(module.weight)
+                    self.w_min = torch.min(module.weight) #Single value
+                    self.w_max = torch.max(module.weight) #QUESTION: Why don't we use torch.minimum givng us tensors for the first module as well?
                 else:
-                    self.w_min = torch.minimum(self.w_min, torch.min(module.weight))
+                    self.w_min = torch.minimum(self.w_min, torch.min(module.weight)) 
                     self.w_max = torch.maximum(self.w_max, torch.max(module.weight))
     
         print("weight min:", self.w_min)
@@ -123,7 +124,7 @@ class QuanAct(nn.Module):
 
     def forward(self, x):
 
-        if self.gather_data:
+        if self.gather_data: #Collects data about the x_min and x_max to quantise the input features
             if self.quantization_method == QuanMode.CHANNEL_BFP:
                 channel_num = x.size()[1]
                 x_block = x.data.transpose(0, 1)
@@ -160,6 +161,7 @@ class QuanAct(nn.Module):
             return x_quan
 
 
+#Function that performs quantisation on the feature maps post-activation
 def activation_quantization(model, wordlength, quantization_method, calibrate_loader):
     # add activation quantisation module
     replace_dict ={}
@@ -167,7 +169,7 @@ def activation_quantization(model, wordlength, quantization_method, calibrate_lo
         if type(module) in QUAN_TARGET_MODULES:
             module_quan = nn.Sequential(*[QuanAct(wordlength, quantization_method), copy.deepcopy(module), QuanAct(wordlength, quantization_method)]) 
             replace_dict[module] = module_quan
-
+    
     replace_modules(model, replace_dict)
 
     model.eval() 

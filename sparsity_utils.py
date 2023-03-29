@@ -105,20 +105,26 @@ class VanillaConvolutionWrapper(nn.Module):
 
     def forward(self, x):
 
+        #Write data to a file
         with open(f"input.dat", 'w') as f:
             f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
 
         # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
         assert self.conv_module.padding_mode == 'zeros'
+        #Zero-pad x
         x_padded = F.pad(input=x, pad=self.conv_module._reversed_padding_repeated_twice, mode='constant', value=0)
 
         dh, dw = self.conv_module.stride
+
+        #Number of filter, number of channels, kernel height, kernel width
         out_channels, in_channels, kh, kw = self.conv_module.weight.shape
-        groups = self.conv_module.groups
+
+
+        groups = self.conv_module.groups #QUESTION: Help me understand groups
         in_channels *= groups
         batch_size = x.shape[0]
 
-        patches = x_padded.unfold(2, kh, dh).unfold(3, kw, dw)
+        patches = x_padded.unfold(2, kh, dh).unfold(3, kw, dw) #QUESTION: What does this do?
         h_windows = patches.shape[2]
         w_windows = patches.shape[3]
         patches = patches.expand(out_channels//groups, *patches.shape)
