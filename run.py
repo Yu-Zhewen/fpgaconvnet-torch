@@ -45,7 +45,7 @@ for model_name in ["resnet18"]:
 '''
 
 
-sweep_range = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
+sweep_range = [0.001] #, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
 for relu_threshold in sweep_range:
     test_name = "sparsity_run_relu_threshold" + str(relu_threshold)
 

@@ -142,6 +142,7 @@ def imagenet_main():
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
     replace_with_variable_relu(model, threshold=args.relu_threshold)
     validate(calibrate_loader, model, criterion, args.print_freq)
+    validate(val_loader, model, criterion)
     output_sparsity_to_csv(args.arch, model, args.output_path)
 
 if __name__ == '__main__':
