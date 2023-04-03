@@ -46,19 +46,19 @@ for model_name in ["resnet18"]:
 
 
 sweep_range = [0.001] #, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
-for relu_threshold in sweep_range:
-    test_name = "sparsity_run_relu_threshold" + str(relu_threshold)
+for model_name in ["resnet18"]:
+    for relu_threshold in sweep_range:
+        test_name = model_name + "_sparsity_run_50K_relu_" + str(relu_threshold)
 
-    start_time = datetime.datetime.now()
-    log_dir= test_name + "_" + str(start_time).replace(" ","_").replace(".","_").replace(":","_").replace("-", "_")
+        start_time = datetime.datetime.now()
+        log_dir= test_name + "_" + str(start_time).replace(" ","_").replace(".","_").replace(":","_").replace("-", "_")
 
-    os.makedirs("runlog/" + log_dir)
-    log_file="runlog/" + log_dir + "/log.txt"
+        os.makedirs("runlog/" + log_dir)
+        log_file="runlog/" + log_dir + "/log.txt"
 
-    regsys_cmd="python3 -u imagenet_main.py --output_path " + "runlog/" + log_dir + " --relu_threshold " + str(relu_threshold) + " --gpu " + str(args.gpu)
+        regsys_cmd="python imagenet_main.py --data /idslF/data/imagenet --calibration-size 51200 --output_path " + "runlog/" + log_dir + " --relu_threshold " + str(relu_threshold) + " --gpu " + str(args.gpu)
 
-    with open(log_file, "w") as log_fp:
-        log_fp.write(regsys_cmd + '\n')
-
-    os.system(regsys_cmd + " 2>&1 | tee -a " + log_file)
+        with open(log_file, "w") as log_fp:
+            log_fp.write(regsys_cmd + '\n')
+        os.system(regsys_cmd + " 2>&1 | tee -a " + log_file)
 

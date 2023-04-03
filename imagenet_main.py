@@ -45,7 +45,9 @@ def imagenet_main():
     args = parser.parse_args()
 
     if args.output_path == None:
-        args.output_path = os.getcwd() + "/output"
+        output_dir = str(args.arch) + "_output_relu_" + str(args.relu_threshold)
+        os.makedirs(output_dir)
+        args.output_path = os.path.join(os.getcwd(), output_dir)
 
     print(args)
 
@@ -69,6 +71,7 @@ def imagenet_main():
         valdir = os.path.join(args.data, 'val')
         traindir = os.path.join(args.data, 'val')
 
+    print("Calculating MACs and Params")
     calculate_macs_params(model, random_input, False, inference_mode=True)
     # define loss function (criterion)
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
@@ -86,6 +89,8 @@ def imagenet_main():
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+    
+    
 
     train_dataset = datasets.ImageFolder(traindir, transforms.Compose([
                     transforms.RandomResizedCrop(224),
@@ -111,6 +116,7 @@ def imagenet_main():
         else:
             train_indexes.append(idx)
     """
+    #Randomness handled by seeds
     rand_indexes = torch.randperm(len(train_dataset)).tolist()
     calibrate_indexes = random.choices(rand_indexes, k=calibrate_size)
 
@@ -134,16 +140,32 @@ def imagenet_main():
         batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, sampler=calibrate_sampler)
 
+
     # todo: measure post-quantisation results???
+    print("Quantising model")
     model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16)
+    print("Model quantised")
     validate(val_loader, model, criterion)
+    print("Accuracy above is for quantised model")
     # use vanilla convolution to measure
     # post-activation (post-sliding-window, to be more precise) sparsity
-    replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
+    
     replace_with_variable_relu(model, threshold=args.relu_threshold)
+    print("Variable ReLU added")
+    top1, top5 = validate(val_loader, model, criterion)
+    print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
+    top1 = str(top1).split("( ")[1][:-1]
+    top5 = str(top5).split("( ")[1][:-1]
+    output_accuracy_to_csv(args.arch, args.relu_threshold, top1, top5)
+
+    replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
+    print("Vanilla Convolution added")
     validate(calibrate_loader, model, criterion, args.print_freq)
-    validate(val_loader, model, criterion)
+    print("Sparsity data collected")
     output_sparsity_to_csv(args.arch, model, args.output_path)
+    
+    
 
 if __name__ == '__main__':
+    print("imagenet_main called")
     imagenet_main()

@@ -16,7 +16,7 @@ def output_sparsity_to_csv(model_name, model, output_dir):
 
     bFirst = True
     for name, module in model.named_modules():
-        if isinstance(module, VanillaConvolutionWrapper):
+        if isinstance(module, FastVanillaConvolutionWrapper):
             if bFirst:
                 bFirst = False
                 with open(file_path, mode='a') as f:
@@ -187,13 +187,14 @@ class VanillaConvolutionWrapper(nn.Module):
 
         return y
 
+
 def replace_with_vanilla_convolution(model, window_size=None):
     replace_dict = {}
 
     conv_layer_index = 0
     for name, module in model.named_modules():
         if isinstance(module, nn.Conv2d):#or isinstance(module, nn.Linear):
-            new_module = VanillaConvolutionWrapper(copy.deepcopy(module))
+            new_module = FastVanillaConvolutionWrapper(copy.deepcopy(module))
 
             new_module.statistics = StreamDataAnalyser(module.in_channels)
             new_module.ma_window_size = window_size
@@ -207,3 +208,92 @@ def replace_with_vanilla_convolution(model, window_size=None):
             conv_layer_index += 1
 
     replace_modules(model, replace_dict)
+
+
+
+class FastVanillaConvolutionWrapper(nn.Module):
+    def __init__(self, conv_module):
+        super(FastVanillaConvolutionWrapper, self).__init__()
+
+        self.conv_module = conv_module
+        self.run_reference = False
+        self.kk = np.prod(self.conv_module.kernel_size)
+
+    def forward(self, x):
+        print("Forward pass of Vanilla Conv called")
+
+        #Write data to a file
+        # with open(f"input.dat", 'w') as f:
+        #     f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
+
+        # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
+        assert self.conv_module.padding_mode == 'zeros'
+        #Zero-pad x
+        x_padded = F.pad(input=x, pad=self.conv_module._reversed_padding_repeated_twice, mode='constant', value=0)
+
+        dh, dw = self.conv_module.stride
+
+        #Number of filter, number of channels, kernel height, kernel width
+        out_channels, in_channels, kh, kw = self.conv_module.weight.shape
+
+
+        groups = self.conv_module.groups #QUESTION: Help me understand groups
+        in_channels *= groups
+        batch_size = x.shape[0]
+
+        patches = x_padded.unfold(2, kh, dh).unfold(3, kw, dw) #QUESTION: What does this do?
+        h_windows = patches.shape[2]
+        w_windows = patches.shape[3]
+        patches = patches.expand(out_channels//groups, *patches.shape)
+        patches = patches.permute(1, 3, 4, 0, 2, 5, 6)
+        # num_of_elements = torch.numel(patches)
+
+        # num_of_nonzeros = 0
+        y = torch.zeros((batch_size, h_windows, w_windows, out_channels))
+        if torch.cuda.is_available():
+            y = y.cuda()
+
+        # roll the loop to reduce memory
+        self.roll_factor = 7
+        assert h_windows == w_windows
+        if h_windows % self.roll_factor != 0:
+            self.roll_factor = get_factors(h_windows)[1]
+
+        for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
+            hstart = hi * (h_windows // self.roll_factor)
+            hend   = (hi+1) * (h_windows // self.roll_factor)
+            wstart = wi * (w_windows // self.roll_factor)
+            wend   = (wi+1) * (w_windows // self.roll_factor)
+
+            patch = patches[:,hstart:hend,wstart:wend].reshape((batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels//groups, groups, in_channels//groups, kh, kw))
+            patch = patch.permute(0, 1, 2, 4, 3, 5, 6, 7)
+            # weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
+            # patch = patch * weight
+
+            tmp = patch.reshape((-1, self.kk))
+            num_of_zeros = self.kk - torch.count_nonzero(tmp, dim=1)
+            num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.in_channels))
+            self.statistics.update(num_of_zeros)
+
+            # if self.ma_statistics is not None:
+            #     if self.ma_data_buffer is None:
+            #         self.ma_data_buffer = num_of_zeros
+            #     else:
+            #         self.ma_data_buffer = torch.concat((self.ma_data_buffer, num_of_zeros), dim=0)
+            #     if self.ma_data_buffer.size()[0] > self.ma_window_size:
+            #         new_ma = moving_average(self.ma_data_buffer, self.ma_window_size)
+            #         self.ma_statistics.update(new_ma)
+            #         if self.ma_window_size == 1:
+            #             self.ma_data_buffer = None
+            #         else:
+            #             self.ma_data_buffer = self.ma_data_buffer[-(self.ma_window_size-1):]
+
+            # patch = patch.sum(-1).sum(-1).sum(-1)
+            # patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
+
+            # y[:,hstart:hend,wstart:wend] = patch
+
+    
+
+        return self.conv_module(x)
+
