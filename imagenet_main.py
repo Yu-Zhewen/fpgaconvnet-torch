@@ -64,7 +64,7 @@ def imagenet_main():
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
         random_input = random_input.cuda()
-        valdir = os.path.join(args.data, 'validation')
+        valdir = os.path.join(args.data, 'val')
         traindir = os.path.join(args.data, 'train')
     else:
         print('using CPU, this will be slow')
