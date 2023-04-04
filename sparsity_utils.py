@@ -135,7 +135,10 @@ class VanillaConvolutionWrapper(nn.Module):
         patches = patches.permute(1, 3, 4, 0, 2, 5, 6) # dims = ( batch_size, h_windows, w_windows, out_channels//groups, in_channels, kh, kw)
         # num_of_elements = torch.numel(patches)
         if (self.statistics.histograms == None):
-            self.statistics.histograms = torch.zeros(in_channels//groups, h_windows, w_windows, self.kk + 1)
+            #NOTE: Toggle the commenting for the following 2 lines for per window
+            # self.statistics.histograms = torch.zeros(in_channels//groups, h_windows, w_windows, self.kk + 1)
+            self.statistics.histograms = torch.zeros(in_channels//groups, self.kk + 1)
+
             if torch.cuda.is_available():
                 self.statistics.histograms = self.statistics.histograms.cuda()
 
@@ -172,8 +175,11 @@ class VanillaConvolutionWrapper(nn.Module):
 
             #All groups and out_channels have the input feature map and therefore same sparsity, can squeeze those dimensions
             zeros_hists = zeros_hists[:, :, :, 0, 0].squeeze(3).squeeze(4) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
-            zeros_hists = zeros_hists.sum(dim = 0) # (h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
-            zeros_hists = zeros_hists.permute(2, 0, 1, 3) # (in_channels//groups, h_windows//self.roll_factor, w_windows//self.roll_factor, bins)
+
+            #NOTE: Toggle the commenting for the following 3 lines for per window
+            zeros_hists = zeros_hists.sum(dim = (0, 1, 2)) # (in_channels//groups, bins)
+            # zeros_hists = zeros_hists.sum(dim = 0) # (h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
+            # zeros_hists = zeros_hists.permute(2, 0, 1, 3) # (in_channels//groups, h_windows//self.roll_factor, w_windows//self.roll_factor, bins)
 
             self.statistics.histograms[:,hstart:hend,wstart:wend, :] += zeros_hists
 
