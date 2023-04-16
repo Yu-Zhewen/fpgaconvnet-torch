@@ -160,8 +160,8 @@ class VanillaConvolutionWrapper(nn.Module):
 
             patch = patches[:,hstart:hend,wstart:wend].reshape((batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels//groups, groups, in_channels//groups, kh, kw))
             patch = patch.permute(0, 1, 2, 4, 3, 5, 6, 7) #(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, kh, kw)
-            # weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
-            # patch = patch * weight
+            weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
+            patch = patch * weight
 
             #----------------Zero Histogram Calculation and Update-----------------------
             #Patches Dims: (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, kh, kw)
@@ -174,14 +174,14 @@ class VanillaConvolutionWrapper(nn.Module):
             zeros_hists = F.one_hot(num_of_zeros, num_classes = self.kk + 1) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, bins)
 
             #All groups and out_channels have the input feature map and therefore same sparsity, can squeeze those dimensions
-            zeros_hists = zeros_hists[:, :, :, 0, 0].squeeze(3).squeeze(4) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
+            zeros_hists = zeros_hists[:, :, :, 0, 0].squeeze(4).squeeze(3) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
 
-            #NOTE: Toggle the commenting for the following 3 lines for per window
+            #NOTE: Toggle the commenting for the following 5 lines for per window
             zeros_hists = zeros_hists.sum(dim = (0, 1, 2)) # (in_channels//groups, bins)
+            self.statistics.histograms += zeros_hists
             # zeros_hists = zeros_hists.sum(dim = 0) # (h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
             # zeros_hists = zeros_hists.permute(2, 0, 1, 3) # (in_channels//groups, h_windows//self.roll_factor, w_windows//self.roll_factor, bins)
-
-            self.statistics.histograms[:,hstart:hend,wstart:wend, :] += zeros_hists
+            # self.statistics.histograms[:,hstart:hend,wstart:wend, :] += zeros_hists
 
             #------------------------Average sparsity calculate and update----------------------------------
             tmp = patch.reshape((-1, self.kk))

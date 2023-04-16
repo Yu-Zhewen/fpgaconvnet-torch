@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import copy
 from enum import Enum
+import os
 
 from utils import *
 
@@ -222,3 +223,15 @@ def model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NET
             module.weight.data.copy_(quantized_weight)
 
     activation_quantization(model, data_width, quantization_method, calibrate_loader)
+
+
+def output_quan_accuracy_to_csv(model_name, relu_threshold, top1, top5):
+    file_path = os.path.join(os.getcwd(), "runlog", str(model_name) + "_accuracy_var_quantisation.csv")
+
+    if not (os.path.isfile(file_path)):
+        with open(file_path, "w") as f:
+            f.write("Wordlength,Top1 Accuracy,Top5 Accuracy\n")
+
+    with open(file_path, "a") as f:
+            row = ",".join([str(relu_threshold), str(top1), str(top5)]) + "\n"
+            f.write(row)
