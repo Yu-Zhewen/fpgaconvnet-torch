@@ -19,7 +19,7 @@ def output_sparsity_to_csv(model_name, model, output_dir):
         if isinstance(module, VanillaConvolutionWrapper):
             if bFirst:
                 bFirst = False
-                with open(file_path, mode='a') as f:
+                with open(file_path, mode='w') as f:
                     csv_writer = csv.writer(f)
                     csv_header = ["Layer Name", "Layer Type"]
                     csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity"]

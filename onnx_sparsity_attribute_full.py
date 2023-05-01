@@ -54,27 +54,13 @@ def layer_name_translation(model_name, onnx_name):
     return torch_name
 
 def annotate_sparsity(model_name, onnx_model, data_path):
-    conv_layer_index = 0
-    for node in onnx_model.graph.node:
-        if node.op_type == 'Conv':
-            layer_name = layer_name_translation(model_name, node.name)
-            np_path = os.path.join(data_path, model_name + "_" + layer_name + "_mean.npy")
-            num_of_zeros_mean = np.load(np_path)
-            for attr in node.attribute:
-                if attr.name == "kernel_shape":
-                    kernel_shape = attr.ints
-                    break
-            sparsity_data = num_of_zeros_mean / np.prod(kernel_shape)
-            set_nodeattr(node, "input sparsity", sparsity_data)
-
-def annotate_histograms(model_name, onnx_model, data_path):
     for node in onnx_model.graph.node:
         if node.op_type == 'Conv':
             layer_name = layer_name_translation(model_name, node.name)
             np_path = os.path.join(data_path, model_name + "_" + layer_name + "_histograms.npy")
-            channel_wise_sprasity = np.load(np_path)
-            windows_data = channel_wise_sprasity[:, -1]/channel_wise_sprasity.sum(axis = 1)
-            set_nodeattr(node, "window sparsity", windows_data)
+            histograms_data = np.load(np_path)
+            histograms = histograms_data/histograms_data.sum(axis = 1)[:, np.newaxis]
+            set_nodeattr(node, "input sparsity", histograms.flatten())
 
 parser = argparse.ArgumentParser(description='Export ONNX model with sparsity attribute')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16',

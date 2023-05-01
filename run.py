@@ -64,7 +64,7 @@ def relu_run(args):
 
 def models_run(args):
     sweep_range = [0] #, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10]
-    for model_name in ["resnet18", "alexnet", "vgg11", "mobilenet_v2", "vgg16", "resnet50"]:
+    for model_name in ["mobilenet_v2"]:
         for relu_threshold in sweep_range:
             test_name = model_name + "_sparsity_run_50K_relu_" + str(relu_threshold)
 
