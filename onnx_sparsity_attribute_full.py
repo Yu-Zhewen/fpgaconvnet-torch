@@ -19,7 +19,6 @@ def torch_onnx_exporter(model, model_name, random_input, output_path):
 
 # https://github.com/Xilinx/finn-base/blob/7c2603a95e90e4de2575020e575c24eab6a15889/src/finn/custom_op/base.py
 def set_nodeattr(node, attr_name, attr_value):
-    print("annotate ", node.name, attr_name, attr_value)
     new_attr = onnx.helper.make_attribute(attr_name, attr_value)
     node.attribute.append(new_attr)
 

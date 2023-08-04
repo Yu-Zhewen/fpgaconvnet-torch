@@ -14,6 +14,7 @@ from quan_utils import *
 from relu_utils import *
 
 from fpgaconvnet.parser.Parser import Parser
+import json
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
@@ -38,22 +39,22 @@ parser.add_argument('--output_path', default=None, type=str,
 
 parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
-parser.add_argument('--calibration-size', default=4, type=int,
+parser.add_argument('--calibration-size', default=1000, type=int,
                     help='')
-parser.add_argument('--relu_threshold', default=0, type=float,
+parser.add_argument('--relu_threshold', default=0, type=str,
                     help='')
 
 parser.add_argument("--accuracy_output",  default=None, type=str,
                     help='Path to csv file to write accuracy to')
 
-parser.add_argument("--model_path",  default=None, type=str,
-                    help='Path to sparse .onnx model')
+# parser.add_argument("--model_path",  default=None, type=str,
+#                     help='Path to sparse .onnx model')
 
-parser.add_argument("--platform_path", default=None, type=str,
-                    help='Path to platform specs (.toml)')
+# parser.add_argument("--platform_path", default=None, type=str,
+#                     help='Path to platform specs (.toml)')
 
-parser.add_argument("--optimised_config_path",  default=None, type=str,
-                    help='Path to optimised configuration (.json)')
+# parser.add_argument("--optimised_config_path",  default=None, type=str,
+#                     help='Path to optimised configuration (.json)')
 
 
 def imagenet_main():
@@ -85,7 +86,7 @@ def imagenet_main():
     else:
         print('using CPU, this will be slow')
         valdir = os.path.join(args.data, 'val')
-        traindir = os.path.join(args.data, 'val')
+        traindir = os.path.join(args.data, 'train')
 
     print("Calculating MACs and Params")
     calculate_macs_params(model, random_input, False, inference_mode=True)
@@ -167,25 +168,16 @@ def imagenet_main():
     # post-activation (post-sliding-window, to be more precise) sparsity
 
     #-----------------Variable ReLU---------------------
-    if (args.model_path != None) and (args.platform_path != None) and (args.optimised_config_path != None):
-        config_parser = Parser(backend="chisel", quant_mode="auto") # use the HLS backend with 16-bit fixed-point quantisation
-        net = config_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path) # parse the onnx model
-
-        # # load existing configuration
-        net = config_parser.prototxt_to_fpgaconvnet(net, args.optimised_config_path)
-        smart_relu = True
-    else:
-        net = None
-        smart_relu = False
-
-    if (args.relu_threshold != 0):
-        replace_with_variable_relu(model, threshold=args.relu_threshold, net=net)
-        print("Variable ReLU added")
-        top1, top5 = validate(val_loader, model, criterion)
-        print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
-        top1 = str(top1).split("( ")[1][:-1]
-        top5 = str(top5).split("( ")[1][:-1]
-        output_accuracy_to_csv(args.arch, args.relu_threshold, smart_relu, top1, top5, args.accuracy_output)
+    
+    f = open(args.relu_threshold)
+    args.relu_threshold = json.load(f)
+    replace_with_variable_relu(model, threshold=args.relu_threshold)
+    print("Variable ReLU added")
+    top1, top5 = validate(val_loader, model, criterion)
+    print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
+    top1 = str(top1).split("( ")[1][:-1]
+    top5 = str(top5).split("( ")[1][:-1]
+        
 
     #---------------Sparsity Data Collection----------
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
@@ -194,6 +186,8 @@ def imagenet_main():
     print("Sparsity data collected")
     output_sparsity_to_csv(args.arch, model, args.output_path)
 
+    total_sparsity = total_network_sparsity(model)
+    output_accuracy_to_csv(args.arch, args.relu_threshold, top1, top5, total_sparsity, args.accuracy_output)
 
 
 if __name__ == '__main__':

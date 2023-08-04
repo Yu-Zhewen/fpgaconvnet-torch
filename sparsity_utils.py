@@ -93,6 +93,20 @@ class StreamDataAnalyser():
         self.cov = self.cov / (self.count - 1)
         self.cor = self.cov / torch.sqrt(torch.matmul(self.var.unsqueeze(1), self.var.unsqueeze(0))) * (self.count-1) / self.count
 
+def total_network_sparsity(model):
+    ops = []
+    sparsity = []
+    for name, module in model.named_modules():
+        if isinstance(module, VanillaConvolutionWrapper):
+            sparsity.append(module.statistics.mean.mean().item()/module.kk)
+            ops.append(module.ops)
+
+    ops = np.array(ops)
+    sparsity = np.array(sparsity)
+    ops = ops/ops.sum()
+    return (sparsity * ops).sum()
+
+
 def moving_average(a, n):
     ret = torch.cumsum(a, dim=0)
     ret[n:] = ret[n:] - ret[:-n]
@@ -133,6 +147,8 @@ class VanillaConvolutionWrapper(nn.Module):
         w_windows = patches.shape[3]
         patches = patches.expand(out_channels//groups, *patches.shape) # dims = (out_channels//groups, batch_size, in_channels, h_windows, w_windows, kh, kw)
         patches = patches.permute(1, 3, 4, 0, 2, 5, 6) # dims = ( batch_size, h_windows, w_windows, out_channels//groups, in_channels, kh, kw)
+        self.ops = h_windows * w_windows * out_channels * in_channels * kh * kw
+
         # num_of_elements = torch.numel(patches)
         if (self.statistics.histograms == None):
             #NOTE: Toggle the commenting for the following 2 lines for per window

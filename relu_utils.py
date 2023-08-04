@@ -23,68 +23,45 @@ def replace_layer_with_variable_relu(model, layer_name, threshold=0):
             break
     replace_modules(model, replace_dict)
 
-def replace_with_variable_relu(model, threshold=0, net=None):
+def replace_with_variable_relu(model, threshold=0):
 
     replace_dict = {}
-    if (net == None):
+    relu_thresholds = {}
+
+    if isinstance(threshold, dict):
+        for name, module in model.named_modules():
+            if isinstance(module, nn.ReLU):#or isinstance(module, nn.Linear):
+                new_module = VariableReLUWrapper(threshold[name])
+                replace_dict[module] = new_module
+
+    else:
         for name, module in model.named_modules():
             if isinstance(module, nn.ReLU):#or isinstance(module, nn.Linear):
                 new_module = VariableReLUWrapper(threshold)
                 replace_dict[module] = new_module
+                relu_thresholds[name] = threshold
 
-    else:
-        relus_to_replace = []
-        previous_relu = None
-        max_rate = 1 #Krish TODO: Change in case of skipping windows
 
-        #Get list of ReLUs that are followed by rate bounded convolutiosns
-        for partition_index in range(len(net.partitions)):
-            partition = net.partitions[partition_index]
-            for layer in graphs.ordered_node_list(partition.graph):
-                #Keep track of preceding relu layer
-                if isinstance(partition.graph.nodes[layer]['type'], list):
-                    if LAYER_TYPE.ReLU in partition.graph.nodes[layer]['type']:
-                        previous_relu = layer
-                elif (partition.graph.nodes[layer]['type'] == LAYER_TYPE.ReLU):
-                    previous_relu = layer
-
-                #Check if layer is a Convolution layer tha can benefit from sparsit
-                if (partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution):
-                    if partition.graph.nodes[layer]['hw'].modules['vector_dot'].rate_kernel_sparsity() < max_rate:
-                        if previous_relu != None:
-                            print(previous_relu)
-                            layer_words = previous_relu.split("_")
-                            i = -1
-                            print(layer_words)
-                            for idx in range(len(layer_words)):
-                                if "Relu" in layer_words[idx]:
-                                    i =idx
-                            if i >= 2:
-                                if "relu" in layer_words[i-1]:
-                                    append_relu = ".".join(layer_words[i-2:i])
-                                else:
-                                    append_relu = ".".join(layer_words[i-1:i])
-                                relus_to_replace.append(append_relu)
-
-        print("Relus to replace:", relus_to_replace)
+        print("Relus to replace:", relu_thresholds)
         for name, module in model.named_modules():
-            if name in relus_to_replace:
-                print("Replacing layer:", name)
+            if name in relu_thresholds:
+                new_module = VariableReLUWrapper(threshold)
+                replace_dict[module] = new_module
+            elif isinstance(module, VariableReLUWrapper):
                 new_module = VariableReLUWrapper(threshold)
                 replace_dict[module] = new_module
 
     replace_modules(model, replace_dict)
+    return relu_thresholds
     # for name, module in model.named_modules():
     #     print(type(module))
 
-def output_accuracy_to_csv(arch, relu_threshold, layer_name, top1, top5, output_dir):
-    output_path = output_dir + "/" + str(layer_name) + ".csv"
-    if not os.path.isdir(output_dir):
-        os.mkdir(output_dir)
+def output_accuracy_to_csv(arch, relu_threshold, top1, top5, sparsity, output_path):
+    if not os.path.isfile(output_path):
         with open(output_path, mode='w') as f:
-            row = "Network,ReLU_Threshold,Variable,Top1_Accuracy,Top5_Accuracy\n"
+            row = "Network,ReLU_Threshold,Top1_Accuracy,Top5_AccuracyNetwork_Sparsity\n"
             f.write(row)
     with open(output_path, mode='a') as f:
-        row =  ','.join([arch, str(relu_threshold), str(layer_name), top1, top5]) + "\n"
+        row =  ','.join([arch, str(relu_threshold), top1, top5, str(sparsity)]) + "\n"
         print("Writing to csv")
         f.write(row)
