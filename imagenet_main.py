@@ -39,7 +39,7 @@ parser.add_argument('--output_path', default=None, type=str,
 
 parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
-parser.add_argument('--calibration-size', default=1000, type=int,
+parser.add_argument('--calibration-size', default=2500, type=int,
                     help='')
 parser.add_argument('--relu_threshold', default=0, type=str,
                     help='')

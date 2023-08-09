@@ -138,15 +138,13 @@ if __name__ == "__main__":
             # Note accuracy
             with open(args.accuracy_path, 'r') as f:
                 lines = f.read().splitlines()
-                for line in lines[1:]:
-                    line_vals = line.split(",")
-                    if float(line_vals[1]) == threshold:
-                        top1 = float(line_vals[-3])
-                        top5 = float(line_vals[-2])
-                        sparsity = float(line_vals[-1])
-                        break
+                line = lines[run + 1]
+                line_vals = line.split(",")
+                top1 = float(line_vals[-3])
+                top5 = float(line_vals[-2])
+                sparsity = float(line_vals[-1])
 
-            sparsity_dir = args.sparsity_path
+            sparsity_dir = args.sparsity_path + "/uniform_relu_" + str(threshold)
 
         #Else collect sparsity
         else:
@@ -177,7 +175,6 @@ if __name__ == "__main__":
                 top1 = float(last_line.split(",")[-3])
                 top5 = float(last_line.split(",")[-2])
                 sparsity = float(last_line.split(",")[-1])
-                sparsity_dir = args.sparsity_path
 
 
 
@@ -193,7 +190,7 @@ if __name__ == "__main__":
             throughput, latency = get_new_throughput(args.arch, net, sparsity_dir)
 
             log_info =  relu_thresholds | {"top1_accuracy": top1, "top5_accuracy": top5, "throughput": throughput, "latency": latency, "network_sparsity": sparsity}
-
+            print("Logging:", log_info)
 
         #Else annotate sparsity, run optimiser, note resources, throughput, and latency
         else:
@@ -256,12 +253,12 @@ if __name__ == "__main__":
 
 
         #Update based on relu-policy
-        threshold += THRESHOLD_INC
+        threshold = round(threshold + THRESHOLD_INC, 4)
 
         if args.relu_policy == "uniform":
             for name, module in model.named_modules():
                 if isinstance(module, nn.ReLU):
-                    relu_thresholds[name + ".1"] = 0.0
+                    relu_thresholds[name + ".1"] = round(threshold, 4)
         elif args.relu_policy == "slowest_node":
             assert args.fixed_hardware
 
@@ -285,7 +282,7 @@ if __name__ == "__main__":
                     if (partition.graph.nodes[layer]['type'] == LAYER_TYPE.Convolution):
                         layer_latency = partition.graph.nodes[layer]['hw'].latency()
                         if previous_relu != None:
-                            previous_layer = layer_name_translation(previous_relu)
+                            previous_layer = layer_name_translation(args.arch, previous_relu)
                             if layer_latency > max_latency and len(partition.graph.nodes[layer]['hw'].sparsity):
                                 max_latency = layer_latency
                                 replace_layer = previous_layer

@@ -189,11 +189,12 @@ class VanillaConvolutionWrapper(nn.Module):
 
             zeros_hists = F.one_hot(num_of_zeros, num_classes = self.kk + 1) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, bins)
 
-            #All groups and out_channels have the input feature map and therefore same sparsity, can squeeze those dimensions
-            zeros_hists = zeros_hists[:, :, :, 0, 0].squeeze(4).squeeze(3) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
+            #All out_channels have the input feature map and therefore same sparsity, can squeeze those dimensions
+            zeros_hists = zeros_hists[:, :, :, :, 0].squeeze(4) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, in_channels//groups, bins)
 
             #NOTE: Toggle the commenting for the following 5 lines for per window
-            zeros_hists = zeros_hists.sum(dim = (0, 1, 2)) # (in_channels//groups, bins)
+            zeros_hists = zeros_hists.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels, self.kk + 1)
+            zeros_hists = zeros_hists.sum(dim = (0, 1, 2)) # (in_channels, bins)
             self.statistics.histograms += zeros_hists
             # zeros_hists = zeros_hists.sum(dim = 0) # (h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
             # zeros_hists = zeros_hists.permute(2, 0, 1, 3) # (in_channels//groups, h_windows//self.roll_factor, w_windows//self.roll_factor, bins)
