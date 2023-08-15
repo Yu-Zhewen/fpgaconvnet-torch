@@ -123,13 +123,15 @@ if __name__ == "__main__":
     model = load_model(args.arch)
     relu_thresholds = {}
     for name, module in model.named_modules():
-            if isinstance(module, nn.ReLU):
+            if isinstance(module, nn.ReLU) or isinstance(module, nn.ReLU6):
                 relu_thresholds[name + ".1"] = 0.0
 
 
     #For run in runs
     threshold = 0.0
     acc_file = "runlog/" + args.arch + "/" + args.relu_policy + "_accuracy.csv"
+    if args.relu_policy == "slowest_node" and not args.fixed_hardware:
+        acc_file = "runlog/" + args.arch + "/" + args.relu_policy + "_changing_accuracy.csv"
     for run in range(args.runs):
 
         #If old sparsity, note metrics
@@ -152,8 +154,12 @@ if __name__ == "__main__":
                 log_dir = args.arch + "/uniform_relu_" + str(threshold)
                 threshold_path = "relu_thresholds/" + args.arch + "/" + args.arch + "_uniform_relu_" + str(threshold) + ".json"
             elif args.relu_policy == "slowest_node":
-                log_dir = args.arch + "/slowest_node_" + str(run)
-                threshold_path = "relu_thresholds/" + args.arch + "/" + args.arch + "_slowest_node_" + str(run) + ".json"
+                if (args.fixed_hardware):
+                    log_dir = args.arch + "/slowest_node_" + str(run)
+                    threshold_path = "relu_thresholds/" + args.arch + "/" + args.arch + "_slowest_node_" + str(run) + ".json"
+                else:
+                    log_dir = args.arch + "/slowest_node_changing_" + str(run)
+                    threshold_path = "relu_thresholds/" + args.arch + "/" + args.arch + "_slowest_node_changing_" + str(run) + ".json"
 
             #Create log_dir
             if not os.path.isdir("runlog/" + log_dir):
@@ -199,8 +205,12 @@ if __name__ == "__main__":
                 dense_onnx_path = "onnx_models/" + args.arch + "/" + args.arch + ".onnx"
                 sparse_onnx_path = "onnx_models/" + args.arch + "/" + args.arch +  "_uniform_relu_" + str(threshold) + ".onnx"
             elif args.relu_policy == "slowest_node":
-                dense_onnx_path = "onnx_models/" + args.arch + "/" + args.arch + ".onnx"
-                sparse_onnx_path = "onnx_models/" + args.arch + "/" + args.arch +  "_slowest_node_" + str(run) + ".onnx"
+                if (args.fixed_hardware):
+                    dense_onnx_path = "onnx_models/" + args.arch + "/" + args.arch + ".onnx"
+                    sparse_onnx_path = "onnx_models/" + args.arch + "/" + args.arch +  "_slowest_node_" + str(run) + ".onnx"
+                else:
+                    dense_onnx_path = "onnx_models/" + args.arch + "/" + args.arch + ".onnx"
+                    sparse_onnx_path = "onnx_models/" + args.arch + "/" + args.arch +  "_slowest_node_changing_" + str(run) + ".onnx"
 
             os.system("python onnx_sparsity_attribute_full.py -a " + args.arch + " --data " + sparsity_dir + " --dense_onnx_path " + dense_onnx_path + " --sparse_onnx_path " + sparse_onnx_path)
 
@@ -260,8 +270,14 @@ if __name__ == "__main__":
                 if isinstance(module, nn.ReLU):
                     relu_thresholds[name + ".1"] = round(threshold, 4)
         elif args.relu_policy == "slowest_node":
-            assert args.fixed_hardware
+            if not (args.fixed_hardware):
+                config_parser = Parser(backend="chisel", quant_mode="auto") # use the HLS backend with 16-bit fixed-point quantisation
+                net = config_parser.onnx_to_fpgaconvnet(sparse_onnx_path, args.platform_path) # parse the onnx model
 
+                net = config_parser.prototxt_to_fpgaconvnet(net, output_path + "/config.json")
+
+                net.update_partitions()
+                
             # Update ReLU thresholds for slowest node
             replaced_layers = set()
             previous_relu = None

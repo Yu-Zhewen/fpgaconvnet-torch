@@ -5,6 +5,7 @@ import torch.nn as nn
 import onnx
 import argparse
 import csv
+import json
 from utils import load_model, model_names, replace_modules
 
 def torch_onnx_exporter(model, model_name, random_input, output_path):
@@ -61,23 +62,69 @@ def annotate_sparsity(model_name, onnx_model, data_path):
             histograms = histograms_data/histograms_data.sum(axis = 1)[:, np.newaxis]
             set_nodeattr(node, "input sparsity", histograms.flatten())
 
+def replace_relu_nodes(model_name, onnx_model, relu_thresholds):
+
+     for index, node in enumerate(onnx_model.graph.node):
+
+        # find a greater node
+        if node.op_type != "Relu":
+            continue
+
+
+        # remove greater and where node
+        onnx_model.graph.node.remove(node)
+        torch_name = layer_name_translation(model_name, node.name)
+
+        # create a Gemm node with the matmul weights and add bias
+        new_node_name = "/".join(node.name.split("/")[:-1] + ["ThresholdedReLU"])
+        new_node = onnx.helper.make_node(
+            "ThresholdedRelu",
+            name= new_node_name,
+            inputs=[*node.input],
+            outputs=node.output,
+            alpha = relu_thresholds[torch_name]
+        )
+
+
+        # add new one
+        onnx_model.graph.node.insert(index, new_node)
+
+        # connect node and ThresholdedReLU node together
+        next_node = next(filter(lambda x: node.output[0] in x.input, onnx_model.graph.node))
+        next_node.input[0] = new_node.output[0]
+
+
 parser = argparse.ArgumentParser(description='Export ONNX model with sparsity attribute')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='vgg16',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names))
-parser.add_argument('--data', metavar='DIR', default="runlog/per_channel/vgg16_sparsity_run_50k_2023_03_13_10_02_17_996357",
+parser.add_argument('--data', metavar='DIR', default="runlog/resnet18/uniform_relu_0.085",
                     help='path to onnx model')  
 parser.add_argument('--dense_onnx_path', metavar='DIR', default="models/vgg16.onnx",
                     help='path to onnx model')              
 parser.add_argument('--sparse_onnx_path', metavar='DIR', default="models/vgg16_sparse.onnx",
-                    help='path to onnx model')      
+                    help='path to onnx model')
+parser.add_argument('--temp_onnx_path', metavar='DIR', default="models/vgg16_sparse.onnx",
+                    help='path to onnx model')
+parser.add_argument("-r", "--relu_thresholds_path",  metavar='DIR', default=None,
+                    help='path to relu thresholds json model')
 
 args = parser.parse_args()
 
 torch_model = load_model(args.arch)
 torch_onnx_exporter(torch_model, args.arch, torch.randn(1, 3, 224, 224), args.dense_onnx_path)
 onnx_model = onnx.load(args.dense_onnx_path)
+
+if args.relu_thresholds_path is not None:
+
+    f = open(args.relu_thresholds_path)
+    relu_thresholds = json.load(f)
+
+    onnx_model = onnx.load(args.dense_onnx_path)
+    replace_relu_nodes(args.arch, onnx_model, relu_thresholds)
+
+
 annotate_quantisation(onnx_model, 16, 16, 32, False)
 annotate_sparsity(args.arch, onnx_model, args.data)
 # annotate_histograms(args.arch, onnx_model, args.data)

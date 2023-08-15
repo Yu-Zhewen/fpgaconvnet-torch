@@ -22,14 +22,14 @@ def output_sparsity_to_csv(model_name, model, output_dir):
                 with open(file_path, mode='w') as f:
                     csv_writer = csv.writer(f)
                     csv_header = ["Layer Name", "Layer Type"]
-                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity"]
+                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity", "Avg Window Sparsity"]
 
                     csv_writer.writerow(csv_header)
 
             with open(file_path, mode='a') as f:
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
-                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk]
+                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk, module.statistics.histograms.sum(axis = 0)[-1]/module.statistics.histograms.sum()]
 
                 csv_writer.writerow(new_row)
 
