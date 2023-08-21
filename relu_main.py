@@ -79,7 +79,7 @@ if __name__ == "__main__":
                         help='how many runs')
 
 
-    parser.add_argument("--sparsity_path",  default="runlog/resnet18/uniform_relu_0.0", type=str,
+    parser.add_argument("--sparsity_path",  default="runlog/resnet18/", type=str,
                         help='Path to sparsity log dir for old sparsity')
 
     parser.add_argument("--accuracy_path",  default="runlog/resnet18/uniform_accuracy.csv", type=str,
