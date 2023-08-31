@@ -186,7 +186,7 @@ if __name__ == "__main__":
 
         #If fixed hardware, parse network and get throughput and latency from fixed hardwareusing collected sparsity
         if (args.fixed_hardware):
-            config_parser = Parser(backend="chisel", quant_mode="auto") # use the HLS backend with 16-bit fixed-point quantisation
+            config_parser = Parser(backend="chisel", quant_mode="auto", custom_onnx = True) # use the HLS backend with 16-bit fixed-point quantisation
             net = config_parser.onnx_to_fpgaconvnet(args.model_path, args.platform_path) # parse the onnx model
 
             net = config_parser.prototxt_to_fpgaconvnet(net, args.optimised_config_path)
@@ -212,7 +212,7 @@ if __name__ == "__main__":
                     dense_onnx_path = "onnx_models/" + args.arch + "/" + args.arch + ".onnx"
                     sparse_onnx_path = "onnx_models/" + args.arch + "/" + args.arch +  "_slowest_node_changing_" + str(run) + ".onnx"
 
-            os.system("python onnx_sparsity_attribute_full.py -a " + args.arch + " --data " + sparsity_dir + " --dense_onnx_path " + dense_onnx_path + " --sparse_onnx_path " + sparse_onnx_path)
+            os.system("python onnx_sparsity_attribute_full.py -a " + args.arch + " --data " + sparsity_dir + " --dense_onnx_path " + dense_onnx_path + " --sparse_onnx_path " + sparse_onnx_path + " -r " + threshold_path)
 
 
             # Run optimiser
@@ -271,13 +271,13 @@ if __name__ == "__main__":
                     relu_thresholds[name + ".1"] = round(threshold, 4)
         elif args.relu_policy == "slowest_node":
             if not (args.fixed_hardware):
-                config_parser = Parser(backend="chisel", quant_mode="auto") # use the HLS backend with 16-bit fixed-point quantisation
+                config_ptmuarser = Parser(backend="chisel", quant_mode="auto", custom_onnx = True) # use the HLS backend with 16-bit fixed-point quantisation
                 net = config_parser.onnx_to_fpgaconvnet(sparse_onnx_path, args.platform_path) # parse the onnx model
 
                 net = config_parser.prototxt_to_fpgaconvnet(net, output_path + "/config.json")
 
                 net.update_partitions()
-                
+
             # Update ReLU thresholds for slowest node
             replaced_layers = set()
             previous_relu = None

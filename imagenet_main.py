@@ -41,8 +41,9 @@ parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
 parser.add_argument('--calibration-size', default=2500, type=int,
                     help='')
-parser.add_argument('--relu_threshold', default=0, type=str,
-                    help='')
+
+parser.add_argument('--relu_threshold', default=None, type=str,
+                    help='path to json containing relu thresholds')
 
 parser.add_argument("--accuracy_output",  default=None, type=str,
                     help='Path to csv file to write accuracy to')
@@ -168,16 +169,16 @@ def imagenet_main():
     # post-activation (post-sliding-window, to be more precise) sparsity
 
     #-----------------Variable ReLU---------------------
-    
-    f = open(args.relu_threshold)
-    args.relu_threshold = json.load(f)
-    replace_with_variable_relu(model, threshold=args.relu_threshold)
-    print("Variable ReLU added")
-    top1, top5 = validate(val_loader, model, criterion)
-    print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
-    top1 = str(top1).split("( ")[1][:-1]
-    top5 = str(top5).split("( ")[1][:-1]
-        
+    if args.relu_threshold is not None:
+        f = open(args.relu_threshold)
+        args.relu_threshold = json.load(f)
+        replace_with_variable_relu(model, threshold=args.relu_threshold)
+        print("Variable ReLU added")
+        top1, top5 = validate(val_loader, model, criterion)
+        print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
+        top1 = str(top1).split("( ")[1][:-1]
+        top5 = str(top5).split("( ")[1][:-1]
+            
 
     #---------------Sparsity Data Collection----------
     replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
