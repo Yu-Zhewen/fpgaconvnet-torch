@@ -1,5 +1,6 @@
 import argparse
 import os
+import pathlib
 import random
 
 import torch
@@ -43,7 +44,7 @@ def imagenet_main():
 
     if args.output_path == None:
         args.output_path = os.getcwd() + "/output"
-
+    pathlib.Path(args.output_path).mkdir(parents=True, exist_ok=True)
     print(args)
 
     random.seed(0)

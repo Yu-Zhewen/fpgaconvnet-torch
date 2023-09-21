@@ -36,7 +36,7 @@ def output_sparsity_to_csv(model_name, model, output_dir):
             np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
-            np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
+            #np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
             # np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",")
             # np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",")
             # np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
@@ -58,7 +58,7 @@ class StreamDataAnalyser():
         self.var  = torch.zeros(stream_num)
         self.cov  = torch.zeros(stream_num, stream_num)
         self.cor  = torch.zeros(stream_num, stream_num)
-        self.sparsity = np.empty(shape=[0,stream_num])
+        #self.sparsity = np.empty(shape=[0,stream_num])
 
         if torch.cuda.is_available():
             self.mean = self.mean.cuda()
@@ -71,7 +71,7 @@ class StreamDataAnalyser():
         self.var = self.var * self.count
         self.cov = self.cov * (self.count - 1)
 
-        self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
+        #self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
 
         assert newValues.size()[1] == self.stream_num
         self.count += newValues.size()[0]
@@ -104,9 +104,11 @@ class VanillaConvolutionWrapper(nn.Module):
         self.kk = np.prod(self.conv_module.kernel_size)
 
     def forward(self, x):
+        # compared with MASE implementation
+        # differences are: 1) torch.nn.Unfold 2) random sample patches
 
-        with open(f"input.dat", 'w') as f:
-            f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
+        #with open(f"input.dat", 'w') as f:
+        #    f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
 
         # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
         assert self.conv_module.padding_mode == 'zeros'
@@ -132,9 +134,10 @@ class VanillaConvolutionWrapper(nn.Module):
 
         # roll the loop to reduce memory
         self.roll_factor = 7
-        assert h_windows == w_windows
         if h_windows % self.roll_factor != 0:
             self.roll_factor = get_factors(h_windows)[1]
+        if w_windows % self.roll_factor != 0:
+            self.roll_factor = 1
 
         for hi, wi in np.ndindex(self.roll_factor, self.roll_factor):
             hstart = hi * (h_windows // self.roll_factor)
