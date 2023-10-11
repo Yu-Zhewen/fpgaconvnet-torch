@@ -87,13 +87,22 @@ def annotate_sparsity_from_toml(model_name, onnx_model, data_path):
             sparsity_data = toml_data[layer_name]["avg"]
             set_nodeattr(node, "input sparsity", sparsity_data)
 
+def annotate_histograms(model_name, onnx_model, data_path):
+    for node in onnx_model.graph.node:
+        if node.op_type == 'Conv':
+            layer_name = layer_name_translation(model_name, node.name)
+            np_path = os.path.join(data_path, model_name + "_" + layer_name + "_histograms.npy")
+            channel_wise_sprasity = np.load(np_path)
+            windows_data = channel_wise_sprasity[:, -1]/channel_wise_sprasity.sum(axis = 1)
+            set_nodeattr(node, "window sparsity", windows_data)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Export ONNX model with sparsity attribute')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',choices=model_names)
     parser.add_argument('--state_dict', metavar='DIR', default="/home/zy18/Downloads/Pruning Results-20230815T143526Z-001/Pruning Results/weight_sparse_50/resnet18_classification_imagenet_2023-08-12/software/transform/transformed_ckpt/state_dict.pt")
     parser.add_argument('--data_path', metavar='DIR', default="/home/zy18/Downloads/Pruning Results-20230815T143526Z-001/Pruning Results/weight_sparse_50/resnet18_classification_imagenet_2023-08-12/software/transform/prune/activation_report.toml")
     parser.add_argument('--export_path', metavar='DIR', default="models")
-
     args = parser.parse_args()
 
     torch_model = load_model(args.arch)
@@ -108,4 +117,5 @@ if __name__ == "__main__":
         annotate_sparsity_from_toml(args.arch, onnx_model, args.data_path)
     else:
         annotate_sparsity_from_numpy(args.arch, onnx_model, args.data_path)
+    # annotate_histograms(args.arch, onnx_model, args.data_path)
     onnx.save(onnx_model, sparse_onnx_path)

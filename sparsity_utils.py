@@ -19,24 +19,25 @@ def output_sparsity_to_csv(model_name, model, output_dir):
         if isinstance(module, VanillaConvolutionWrapper):
             if bFirst:
                 bFirst = False
-                with open(file_path, mode='a') as f:
+                with open(file_path, mode='w') as f:
                     csv_writer = csv.writer(f)
                     csv_header = ["Layer Name", "Layer Type"]
-                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity"]
+                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity", "Avg Window Sparsity"]
 
                     csv_writer.writerow(csv_header)
 
             with open(file_path, mode='a') as f:
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
-                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk]
+                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk, module.statistics.histograms.sum(axis = 0)[-1]/module.statistics.histograms.sum()]
 
                 csv_writer.writerow(new_row)
 
             np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
-            #np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
+            # np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
+            np.save(os.path.join(output_dir,"{}_{}_histograms.npy".format(model_name, name)), module.statistics.histograms.cpu().numpy())
             # np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",")
             # np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",")
             # np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
@@ -50,8 +51,9 @@ def output_sparsity_to_csv(model_name, model, output_dir):
                 np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")
                 np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
 
+
 class StreamDataAnalyser():
-    def __init__(self, stream_num):
+    def __init__(self, in_channels):
         self.count = 0
         self.stream_num = stream_num
         self.mean = torch.zeros(stream_num)
@@ -71,9 +73,9 @@ class StreamDataAnalyser():
         self.var = self.var * self.count
         self.cov = self.cov * (self.count - 1)
 
-        #self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
+        # self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
 
-        assert newValues.size()[1] == self.stream_num
+        assert newValues.size()[1] == self.in_channels
         self.count += newValues.size()[0]
 
         # newvalues - oldMean
@@ -90,10 +92,25 @@ class StreamDataAnalyser():
         self.cov = self.cov / (self.count - 1)
         self.cor = self.cov / torch.sqrt(torch.matmul(self.var.unsqueeze(1), self.var.unsqueeze(0))) * (self.count-1) / self.count
 
+def total_network_sparsity(model):
+    ops = []
+    sparsity = []
+    for name, module in model.named_modules():
+        if isinstance(module, VanillaConvolutionWrapper):
+            sparsity.append(module.statistics.mean.mean().item()/module.kk)
+            ops.append(module.ops)
+
+    ops = np.array(ops)
+    sparsity = np.array(sparsity)
+    ops = ops/ops.sum()
+    return (sparsity * ops).sum()
+
+
 def moving_average(a, n):
     ret = torch.cumsum(a, dim=0)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
+
 
 class VanillaConvolutionWrapper(nn.Module):
     def __init__(self, conv_module):
@@ -107,15 +124,21 @@ class VanillaConvolutionWrapper(nn.Module):
         # compared with MASE implementation
         # differences are: 1) torch.nn.Unfold 2) random sample patches
 
-        #with open(f"input.dat", 'w') as f:
-        #    f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
+        #Write data to a file
+        # with open(f"input.dat", 'w') as f:
+        #     f.write("\n".join([ str(i) for i in x.clone().cpu().numpy().reshape(-1).tolist() ]))
 
         # https://discuss.pytorch.org/t/make-custom-conv2d-layer-efficient-wrt-speed-and-memory/70175
         assert self.conv_module.padding_mode == 'zeros'
+        #Zero-pad x
         x_padded = F.pad(input=x, pad=self.conv_module._reversed_padding_repeated_twice, mode='constant', value=0)
 
         dh, dw = self.conv_module.stride
+
+        #Number of filter, number of channels, kernel height, kernel width
         out_channels, in_channels, kh, kw = self.conv_module.weight.shape
+
+
         groups = self.conv_module.groups
         in_channels *= groups
         batch_size = x.shape[0]
@@ -123,11 +146,19 @@ class VanillaConvolutionWrapper(nn.Module):
         patches = x_padded.unfold(2, kh, dh).unfold(3, kw, dw)
         h_windows = patches.shape[2]
         w_windows = patches.shape[3]
-        patches = patches.expand(out_channels//groups, *patches.shape)
-        patches = patches.permute(1, 3, 4, 0, 2, 5, 6)
-        num_of_elements = torch.numel(patches)
+        patches = patches.expand(out_channels//groups, *patches.shape) # dims = (out_channels//groups, batch_size, in_channels, h_windows, w_windows, kh, kw)
+        patches = patches.permute(1, 3, 4, 0, 2, 5, 6) # dims = ( batch_size, h_windows, w_windows, out_channels//groups, in_channels, kh, kw)
+        self.ops = h_windows * w_windows * out_channels * in_channels * kh * kw
 
-        num_of_nonzeros = 0
+        # num_of_elements = torch.numel(patches)
+        if (self.statistics.histograms == None):
+            #NOTE: Toggle the commenting for the following 2 lines for per window
+            # self.statistics.histograms = torch.zeros(in_channels//groups, h_windows, w_windows, self.kk + 1)
+            self.statistics.histograms = torch.zeros(in_channels//groups, self.kk + 1)
+
+            if torch.cuda.is_available():
+                self.statistics.histograms = self.statistics.histograms.cuda()
+
         y = torch.zeros((batch_size, h_windows, w_windows, out_channels))
         if torch.cuda.is_available():
             y = y.cuda()
@@ -146,15 +177,38 @@ class VanillaConvolutionWrapper(nn.Module):
             wend   = (wi+1) * (w_windows // self.roll_factor)
 
             patch = patches[:,hstart:hend,wstart:wend].reshape((batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels//groups, groups, in_channels//groups, kh, kw))
-            patch = patch.permute(0, 1, 2, 4, 3, 5, 6, 7)
+            patch = patch.permute(0, 1, 2, 4, 3, 5, 6, 7) #(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, kh, kw)
             weight = self.conv_module.weight.reshape((groups, out_channels//groups, in_channels//groups, kh, kw))
             patch = patch * weight
 
+            #----------------Zero Histogram Calculation and Update-----------------------
+            #Patches Dims: (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, kh, kw)
+            #Histograms Dims: (in_channels, h_windows, w_windows, self.kk)
+            tmp = patch.reshape((*patch.shape[:-2], self.kk))
+
+            num_of_zeros = self.kk - torch.count_nonzero(tmp, dim = -1) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups)
+
+
+            zeros_hists = F.one_hot(num_of_zeros, num_classes = self.kk + 1) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, out_channels//groups, in_channels//groups, bins)
+
+            #All out_channels have the input feature map and therefore same sparsity, can squeeze those dimensions
+            zeros_hists = zeros_hists[:, :, :, :, 0].squeeze(4) # (batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, groups, in_channels//groups, bins)
+
+            #NOTE: Toggle the commenting for the following 5 lines for per window
+            zeros_hists = zeros_hists.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels, self.kk + 1)
+            zeros_hists = zeros_hists.sum(dim = (0, 1, 2)) # (in_channels, bins)
+            self.statistics.histograms += zeros_hists
+            # zeros_hists = zeros_hists.sum(dim = 0) # (h_windows//self.roll_factor, w_windows//self.roll_factor, in_channels//groups, bins)
+            # zeros_hists = zeros_hists.permute(2, 0, 1, 3) # (in_channels//groups, h_windows//self.roll_factor, w_windows//self.roll_factor, bins)
+            # self.statistics.histograms[:,hstart:hend,wstart:wend, :] += zeros_hists
+
+            #------------------------Average sparsity calculate and update----------------------------------
             tmp = patch.reshape((-1, self.kk))
             num_of_zeros = self.kk - torch.count_nonzero(tmp, dim=1)
             num_of_zeros = num_of_zeros.reshape((-1, self.conv_module.in_channels))
             self.statistics.update(num_of_zeros)
 
+            #-----------------------MA Statistics-----------------------
             if self.ma_statistics is not None:
                 if self.ma_data_buffer is None:
                     self.ma_data_buffer = num_of_zeros
@@ -168,21 +222,15 @@ class VanillaConvolutionWrapper(nn.Module):
                     else:
                         self.ma_data_buffer = self.ma_data_buffer[-(self.ma_window_size-1):]
 
-            patch = patch.sum(-1).sum(-1).sum(-1)
-            patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
+            # patch = patch.sum(-1).sum(-1).sum(-1)
+            # patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
 
-            y[:,hstart:hend,wstart:wend] = patch
+            # y[:,hstart:hend,wstart:wend] = patch
 
-        if self.conv_module.bias is not None:
-            bias = self.conv_module.bias.expand(batch_size, h_windows, w_windows, out_channels)
-            y = y + bias
-        y = y.permute(0, 3, 1, 2)
 
-        if self.run_reference:
-            ref_output = self.conv_module(x)
-            assert torch.allclose(ref_output, y, atol=1e-5)
+        return self.conv_module(x)
 
-        return y
+
 
 def replace_with_vanilla_convolution(model, window_size=None):
     replace_dict = {}
@@ -204,3 +252,6 @@ def replace_with_vanilla_convolution(model, window_size=None):
             conv_layer_index += 1
 
     replace_modules(model, replace_dict)
+
+
+

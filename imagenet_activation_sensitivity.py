@@ -1,6 +1,5 @@
 import argparse
 import os
-import pathlib
 import random
 
 import torch
@@ -15,7 +14,6 @@ from quan_utils import *
 from relu_utils import *
 
 from fpgaconvnet.parser.Parser import Parser
-import json
 
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet')
@@ -35,36 +33,26 @@ parser.add_argument('-p', '--print-freq', default=10, type=int,
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
 
-parser.add_argument('--output_path', default=None, type=str,
-                    help='output path')
 
 parser.add_argument('--ma_window_size', default=None, type=int,
                     help='')
-parser.add_argument('--calibration-size', default=2500, type=int,
+parser.add_argument('--calibration-size', default=4, type=int,
                     help='')
-
-parser.add_argument('--relu_threshold', default=None, type=str,
-                    help='path to json containing relu thresholds')
 
 parser.add_argument("--accuracy_output",  default=None, type=str,
                     help='Path to csv file to write accuracy to')
 
-# parser.add_argument("--model_path",  default=None, type=str,
-#                     help='Path to sparse .onnx model')
-
-# parser.add_argument("--platform_path", default=None, type=str,
-#                     help='Path to platform specs (.toml)')
-
-# parser.add_argument("--optimised_config_path",  default=None, type=str,
-#                     help='Path to optimised configuration (.json)')
 
 
 def imagenet_main():
     args = parser.parse_args()
 
-    if args.output_path == None:
-        args.output_path = os.getcwd() + "/output"
-    pathlib.Path(args.output_path).mkdir(parents=True, exist_ok=True)
+    # if args.output_path == None:
+    #     output_dir = str(args.arch) + "_output_relu_" + str(args.relu_threshold)
+    #     if not os.path.isdir(output_dir):
+    #         os.makedirs(output_dir)
+    #     args.output_path = os.path.join(os.getcwd(), output_dir)
+
     print(args)
 
     random.seed(0)
@@ -85,7 +73,7 @@ def imagenet_main():
     else:
         print('using CPU, this will be slow')
         valdir = os.path.join(args.data, 'val')
-        traindir = os.path.join(args.data, 'train')
+        traindir = os.path.join(args.data, 'val')
 
     print("Calculating MACs and Params")
     calculate_macs_params(model, random_input, False, inference_mode=True)
@@ -161,33 +149,42 @@ def imagenet_main():
     print("Quantising model")
     model_quantisation(model, calibrate_loader, quantization_method=QuanMode.NETWORK_FP, weight_width=16, data_width=16)
     print("Model quantised")
-    validate(val_loader, model, criterion)
+    original_top1, original_top5 = validate(val_loader, model, criterion)
     print("Accuracy above is for quantised model")
+    original_top1 = float(str(original_top1).split("( ")[1][:-1])
+    original_top5 = float(str(original_top5).split("( ")[1][:-1])
     # use vanilla convolution to measure
     # post-activation (post-sliding-window, to be more precise) sparsity
 
-    #-----------------Variable ReLU---------------------
-    if args.relu_threshold is not None:
-        f = open(args.relu_threshold)
-        args.relu_threshold = json.load(f)
-        replace_with_variable_relu(model, threshold=args.relu_threshold)
-        print("Variable ReLU added")
-        top1, top5 = validate(val_loader, model, criterion)
-        print("Accuracy above is for ReLU threshold:" + str(args.relu_threshold))
-        top1 = str(top1).split("( ")[1][:-1]
-        top5 = str(top5).split("( ")[1][:-1]
-            
+    #-----------------Variable ReLU Sensitivity---------------------
+    relu_list = []
+    for name, module in model.named_modules():
+        if isinstance(module, nn.ReLU):#or isinstance(module, nn.Linear):
+            relu_list.append(name)
 
-    #---------------Sparsity Data Collection----------
-    replace_with_vanilla_convolution(model, window_size=args.ma_window_size)
-    print("Vanilla Convolution added")
-    validate(calibrate_loader, model, criterion, args.print_freq)
-    print("Sparsity data collected")
-    output_sparsity_to_csv(args.arch, model, args.output_path)
+    model_copy = copy.deepcopy(model)
 
-    total_sparsity = total_network_sparsity(model)
-    output_accuracy_to_csv(args.arch, args.relu_threshold, top1, top5, total_sparsity, args.accuracy_output)
+    for relu_layer in relu_list:
+        min_thresh = 0
+        max_thresh = 20
+        while (max_thresh - min_thresh) > 0.01:
+            recorded = False
+            for threshold in np.linspace(min_thresh, max_thresh, 21):
+                model = copy.deepcopy(model_copy)
+                replace_layer_with_variable_relu(model, relu_layer, threshold=threshold)
+                print("Variable ReLU added")
+                top1, top5 = validate(val_loader, model, criterion)
+                print("Accuracy above is for " + str(relu_layer) + " with ReLU threshold:" + str(threshold))
+                top1 = str(top1).split("( ")[1][:-1]
+                top5 = str(top5).split("( ")[1][:-1]
+                output_dir = args.accuracy_output + "/" + str(args.arch)
+                output_accuracy_to_csv(args.arch, threshold, relu_layer, top1, top5, output_dir)
+                if float(top5) < 0.99*original_top5 and not recorded:
+                    min_thresh, max_thresh = threshold - (max_thresh - min_thresh)/20, threshold
+                    recorded = True
 
 
 if __name__ == '__main__':
     imagenet_main()
+
+#
