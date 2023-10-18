@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import numpy as np
 import math
 
-def output_sparsity_to_csv(model_name, model, output_dir):
+def export_sparsity_data(model_name, model, output_dir):
     file_path = os.path.join(output_dir, "{}_sparsity_log.csv".format(model_name))
 
     bFirst = True
@@ -22,45 +22,36 @@ def output_sparsity_to_csv(model_name, model, output_dir):
                 with open(file_path, mode='w') as f:
                     csv_writer = csv.writer(f)
                     csv_header = ["Layer Name", "Layer Type"]
-                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity", "Avg Window Sparsity"]
+                    csv_header += ["KERNEL*KERNEL", "Avg Zeros", "Avg Sparsity", "Avg All-zero Window Sparsity"]
 
                     csv_writer.writerow(csv_header)
 
             with open(file_path, mode='a') as f:
                 csv_writer = csv.writer(f)
                 new_row = [name, type(module)]
-                new_row += [module.kk, module.statistics.mean.mean().item(), module.statistics.mean.mean().item()/module.kk, module.statistics.histograms.sum(axis = 0)[-1]/module.statistics.histograms.sum()]
-
+                new_row += [module.kk, module.statistics.mean.mean().item()]
+                new_row += [module.statistics.mean.mean().item()/module.kk]
+                new_row += [module.statistics.histograms.sum(axis = 0)[-1]/module.statistics.histograms.sum()]
                 csv_writer.writerow(new_row)
 
             np.save(os.path.join(output_dir,"{}_{}_mean.npy".format(model_name, name)), module.statistics.mean.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_var.npy".format(model_name, name)), module.statistics.var.cpu().numpy())
             np.save(os.path.join(output_dir,"{}_{}_correlation.npy".format(model_name, name)), module.statistics.cor.cpu().numpy())
-            # np.save(os.path.join(output_dir,"{}_{}_sparsity.npy".format(model_name, name)), module.statistics.sparsity)
             np.save(os.path.join(output_dir,"{}_{}_histograms.npy".format(model_name, name)), module.statistics.histograms.cpu().numpy())
-            # np.savetxt(os.path.join(output_dir,"{}_{}_mean.csv".format(model_name, name)), module.statistics.mean.cpu().numpy(), delimiter=",")
-            # np.savetxt(os.path.join(output_dir,"{}_{}_var.csv".format(model_name, name)), module.statistics.var.cpu().numpy(), delimiter=",")
-            # np.savetxt(os.path.join(output_dir,"{}_{}_correlation.csv".format(model_name, name)), module.statistics.cor.cpu().numpy(), delimiter=",")
-            # np.savetxt(os.path.join(output_dir,"{}_{}_sparsity.csv".format(model_name, name)), module.statistics.sparsity, delimiter=",")
-
+            
             if module.ma_statistics is not None:
                 np.save(os.path.join(output_dir,"{}_{}_ma_mean.npy".format(model_name, name)), module.ma_statistics.mean.cpu().numpy())
                 np.save(os.path.join(output_dir,"{}_{}_ma_var.npy".format(model_name, name)), module.ma_statistics.var.cpu().numpy())
                 np.save(os.path.join(output_dir,"{}_{}_ma_correaltion.npy".format(model_name, name)), module.ma_statistics.cor.cpu().numpy())
-                np.savetxt(os.path.join(output_dir,"{}_{}_ma_mean.csv".format(model_name, name)), module.ma_statistics.mean.cpu().numpy(), delimiter=",")
-                np.savetxt(os.path.join(output_dir,"{}_{}_ma_var.csv".format(model_name, name)), module.ma_statistics.var.cpu().numpy(), delimiter=",")
-                np.savetxt(os.path.join(output_dir,"{}_{}_ma_correaltion.csv".format(model_name, name)), module.ma_statistics.cor.cpu().numpy(), delimiter=",")
-
 
 class StreamDataAnalyser():
-    def __init__(self, in_channels):
+    def __init__(self, stream_num):
         self.count = 0
         self.stream_num = stream_num
         self.mean = torch.zeros(stream_num)
         self.var  = torch.zeros(stream_num)
         self.cov  = torch.zeros(stream_num, stream_num)
         self.cor  = torch.zeros(stream_num, stream_num)
-        #self.sparsity = np.empty(shape=[0,stream_num])
 
         if torch.cuda.is_available():
             self.mean = self.mean.cuda()
@@ -75,7 +66,7 @@ class StreamDataAnalyser():
 
         # self.sparsity = np.vstack((self.sparsity, newValues.clone().cpu().numpy()))
 
-        assert newValues.size()[1] == self.in_channels
+        assert newValues.size()[1] == self.stream_num
         self.count += newValues.size()[0]
 
         # newvalues - oldMean
@@ -105,12 +96,10 @@ def total_network_sparsity(model):
     ops = ops/ops.sum()
     return (sparsity * ops).sum()
 
-
 def moving_average(a, n):
     ret = torch.cumsum(a, dim=0)
     ret[n:] = ret[n:] - ret[:-n]
     return ret[n - 1:] / n
-
 
 class VanillaConvolutionWrapper(nn.Module):
     def __init__(self, conv_module):
@@ -150,12 +139,10 @@ class VanillaConvolutionWrapper(nn.Module):
         patches = patches.permute(1, 3, 4, 0, 2, 5, 6) # dims = ( batch_size, h_windows, w_windows, out_channels//groups, in_channels, kh, kw)
         self.ops = h_windows * w_windows * out_channels * in_channels * kh * kw
 
-        # num_of_elements = torch.numel(patches)
-        if (self.statistics.histograms == None):
-            #NOTE: Toggle the commenting for the following 2 lines for per window
+        if not hasattr(self.statistics, "histograms"):
+            # NOTE: Toggle the commenting for the following 2 lines for per window
             # self.statistics.histograms = torch.zeros(in_channels//groups, h_windows, w_windows, self.kk + 1)
             self.statistics.histograms = torch.zeros(in_channels//groups, self.kk + 1)
-
             if torch.cuda.is_available():
                 self.statistics.histograms = self.statistics.histograms.cuda()
 
@@ -224,22 +211,16 @@ class VanillaConvolutionWrapper(nn.Module):
 
             # patch = patch.sum(-1).sum(-1).sum(-1)
             # patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
-
             # y[:,hstart:hend,wstart:wend] = patch
-
 
         return self.conv_module(x)
 
-
-
 def replace_with_vanilla_convolution(model, window_size=None):
     replace_dict = {}
-
     conv_layer_index = 0
     for name, module in model.named_modules():
         if isinstance(module, nn.Conv2d):#or isinstance(module, nn.Linear):
             new_module = VanillaConvolutionWrapper(copy.deepcopy(module))
-
             new_module.statistics = StreamDataAnalyser(module.in_channels)
             new_module.ma_window_size = window_size
             new_module.ma_data_buffer = None
@@ -247,11 +228,7 @@ def replace_with_vanilla_convolution(model, window_size=None):
                 new_module.ma_statistics = None
             else:
                 new_module.ma_statistics = StreamDataAnalyser(module.in_channels)
-
             replace_dict[module] = new_module
             conv_layer_index += 1
 
     replace_modules(model, replace_dict)
-
-
-

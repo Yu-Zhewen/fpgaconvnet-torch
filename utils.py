@@ -208,5 +208,5 @@ def calculate_macs_params(model, input, turn_on_warnings, verbose=True, inferenc
     format_macs, format_params = thop.clever_format([macs, params], "%.3f")
     if verbose:
         print("MACs:", format_macs, "Params:", format_params)
-        print(layer_info)
+        #print(layer_info)
     return macs, params
