@@ -131,10 +131,7 @@ dmypy.json
 # pytorch 
 *.pt
 *.pth
-models/
-runlog/
 
 *.csv
-
 output/
 
