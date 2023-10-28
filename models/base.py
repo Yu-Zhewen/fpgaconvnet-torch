@@ -21,5 +21,12 @@ class TorchModelWrapper(nn.Module, ABC):
     def inference(self):
         pass
 
+    @abstractmethod
+    def onnx_exporter(self):
+        pass
+
+    def forward(self, x):
+        return self.model(x)
+
     from models.utils import replace_modules
-    from models.utils import export_onnx
+    from models.utils import generate_onnx_files

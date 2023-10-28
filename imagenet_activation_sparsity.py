@@ -18,7 +18,7 @@ def main():
 
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                         help='number of data loading workers')
-    parser.add_argument('-b', '--batch-size', default=64, type=int, metavar='N',
+    parser.add_argument('-b', '--batch-size', default=16, type=int, metavar='N',
                         help='mini-batch size')
     parser.add_argument('--gpu', default=None, type=int,
                         help='GPU id to use.')
@@ -51,7 +51,7 @@ def main():
     # post-activation sparsity has zero impact on accuracy
     # measure sparsity-related stats on calibration set
     measure_model_sparsity(model_wrapper)
-
+    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "sparse"))
 
 if __name__ == '__main__':
     main()

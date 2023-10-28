@@ -71,6 +71,7 @@ def main():
     model_wrapper.load_model()
     quantize_model(model_wrapper, QuantMode.CHANNEL_BFP, 8, 8)
     model_wrapper.inference("validate") 
+    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "channel_bfp8"))
 
 if __name__ == '__main__':
     main()

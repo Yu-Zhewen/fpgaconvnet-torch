@@ -77,6 +77,12 @@ class ImagenetModelWrapper(TorchModelWrapper):
     def inference(self, mode="validate"):
         return _inference(self.data_loaders[mode], self.model, nn.CrossEntropyLoss(), silence=(mode == "calibrate"))
 
+    def onnx_exporter(self, onnx_path):
+        random_input = torch.randn(1,3,224,224) # todo: support other input sizes
+        if torch.cuda.is_available():
+            random_input = random_input.cuda()
+        torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
+
 class TorchvisionModelWrapper(ImagenetModelWrapper):
     def load_model(self, eval=True):
         self.model = torchvision.models.__dict__[self.model_name](pretrained=True)

@@ -148,21 +148,20 @@ class SlideWindowConvolution(nn.Module):
             # patch = patch.reshape(batch_size, h_windows//self.roll_factor, w_windows//self.roll_factor, out_channels)
             # y[:,hstart:hend,wstart:wend] = patch
 
-        return self.conv_module(x)
-
+        return self.nn_conv(x)
 
 def measure_model_sparsity(model_wrapper):
     replace_dict = {}
     named_sparse_modules = {}
-    for name, module in model_wrapper.modules():
+    for name, module in model_wrapper.named_modules():
         if isinstance(module, SPARSE_MODULES):
             new_module = SlideWindowConvolution(copy.deepcopy(module))
             replace_dict[module] = new_module
-            named_new_modules[name] = new_module
+            named_sparse_modules[name] = new_module
     model_wrapper.replace_modules(replace_dict)
     model_wrapper.inference("calibrate")
     
     # add sideband information
     model_wrapper.sideband_info["sparsity"] = {}
     for name, module in named_sparse_modules.items():
-        model_wrapper.sideband_info["sparsity"][name]["hist"] = module.statistics.hist
+        model_wrapper.sideband_info["sparsity"][name] = {"hist": module.statistics.hist}

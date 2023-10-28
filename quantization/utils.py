@@ -185,4 +185,4 @@ def quantize_model(model_wrapper, mode=QuantMode.NETWORK_FP, weight_width=16, da
             module.weight.data.copy_(quantized_weight)
     activation_quantizer = ModelActQuantizer(model_wrapper)
     activation_quantizer.apply(data_width, mode)
-    model_wrapper.sideband_info['qauntization'] = {'weight_width': weight_width, 'data_width': data_width, 'mode': mode}
+    model_wrapper.sideband_info['quantization'] = {'weight_width': weight_width, 'data_width': data_width, 'mode': mode}
