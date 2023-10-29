@@ -45,7 +45,7 @@ def main():
 
     print("NETWORK FP16 Inference")
     model_wrapper.load_model()
-    quantize_model(model_wrapper, QuantMode.NETWORK_FP, 16, 16)
+    quantize_model(model_wrapper, {'weight_width': 16, 'data_width': 16, 'mode': QuantMode.NETWORK_FP})
     top1, top5 = model_wrapper.inference("validate")
 
     # post-activation sparsity has zero impact on accuracy

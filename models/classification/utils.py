@@ -1,6 +1,8 @@
 import time
 import torch
 
+import torch.nn as nn
+
 class AverageMeter(object):
     """Computes and stores the average and current value"""
     def __init__(self, name, fmt=':f'):
@@ -102,4 +104,82 @@ def _inference(data_loader, model, criterion, print_freq=0, silence=False):
             print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
                 .format(top1=top1, top5=top5))
         
-    return top1, top5
+    return top1.avg.item(), top5.avg.item()
+
+# todo: turn this into a general transformation
+# separate relu instances 
+class BasicBlockReluFixed(nn.Module):
+    def __init__(self, origin_block):
+        super(BasicBlockReluFixed, self).__init__()
+
+        self.conv1 = origin_block.conv1
+        self.bn1 = origin_block.bn1
+        self.relu1 = nn.ReLU(inplace=True)
+
+        self.conv2 = origin_block.conv2
+        self.bn2 = origin_block.bn2
+        self.relu2 = nn.ReLU(inplace=True)
+
+        self.downsample = origin_block.downsample
+        self.stride = origin_block.stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu2(out)
+
+        return out
+
+# todo: turn this into a general transformation
+# separate relu instances 
+class BottleneckReluFixed(nn.Module):
+    def __init__(self, origin_block):
+        super(BottleneckReluFixed).__init__()
+
+        self.conv1 = origin_block.conv1
+        self.bn1 = origin_block.bn1
+        self.relu1 = nn.ReLU(inplace=True)
+
+        self.conv2 = origin_block.conv2
+        self.bn2 = origin_block.bn2
+        self.relu2 = nn.ReLU(inplace=True)
+
+        self.conv3 = origin_block.conv3
+        self.bn3 = origin_block.bn3
+        self.relu3 = nn.ReLU(inplace=True)
+
+        self.downsample = origin_block.downsample
+        self.stride = origin_block.stride
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu1(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu2(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu3(out)
+
+        return out

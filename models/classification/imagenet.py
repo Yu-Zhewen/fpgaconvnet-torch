@@ -1,3 +1,4 @@
+import copy
 import os
 import random
 import timm
@@ -10,7 +11,8 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
 from models.base import TorchModelWrapper
-from models.classification.utils import _inference
+from models.classification.utils import _inference, BasicBlockReluFixed, BottleneckReluFixed
+from torchvision.models.resnet import BasicBlock, Bottleneck
 
 DATASET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))
 
@@ -86,9 +88,20 @@ class ImagenetModelWrapper(TorchModelWrapper):
 class TorchvisionModelWrapper(ImagenetModelWrapper):
     def load_model(self, eval=True):
         self.model = torchvision.models.__dict__[self.model_name](pretrained=True)
+        self.model_fixer()
         # todo: fuse bn
         if torch.cuda.is_available():
             self.model.cuda()
+
+    def model_fixer(self):
+        replace_dict = {}
+        for name, module in self.named_modules(): 
+            if isinstance(module, BasicBlock):
+                replace_dict[module] = BasicBlockReluFixed(copy.deepcopy(module))
+            elif isinstance(module, Bottleneck):
+                replace_dict[module] = BottleneckReluFixed(copy.deepcopy(module))
+        self.replace_modules(replace_dict)
+
 
 class TimmModelWrapper(ImagenetModelWrapper):
     def load_model(self, eval=True):

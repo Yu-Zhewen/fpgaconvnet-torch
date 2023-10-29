@@ -177,12 +177,12 @@ class ModelActQuantizer():
                     module.x_max = act_max
                 module.get_scale_shift()
 
-def quantize_model(model_wrapper, mode=QuantMode.NETWORK_FP, weight_width=16, data_width=16):
+def quantize_model(model_wrapper, info):
+    model_wrapper.sideband_info['quantization'] = info
     weight_quantizer = ModelParamQuantizer(model_wrapper)
     for name, module in model_wrapper.named_modules(): 
         if isinstance(module, WEIGHT_QUANT_MODULES):
-            quantized_weight = weight_quantizer.apply(module.weight, weight_width, mode)
+            quantized_weight = weight_quantizer.apply(module.weight, info["weight_width"], info["mode"])
             module.weight.data.copy_(quantized_weight)
     activation_quantizer = ModelActQuantizer(model_wrapper)
-    activation_quantizer.apply(data_width, mode)
-    model_wrapper.sideband_info['quantization'] = {'weight_width': weight_width, 'data_width': data_width, 'mode': mode}
+    activation_quantizer.apply(info["data_width"], info["mode"])

@@ -50,26 +50,26 @@ def main():
     # TEST 2
     print("NETWORK FP16 Inference")
     model_wrapper.load_model()
-    quantize_model(model_wrapper, QuantMode.NETWORK_FP, 16, 16)
+    quantize_model(model_wrapper, {'weight_width': 16, 'data_width': 16, 'mode': QuantMode.NETWORK_FP})
     model_wrapper.inference("validate")
 
     # TEST 3
     print("NETWORK FP8 Inference")
     model_wrapper.load_model()
-    quantize_model(model_wrapper, QuantMode.NETWORK_FP, 8, 8)
+    quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.NETWORK_FP})
     model_wrapper.inference("validate")
 
     # TEST 4
     print("LAYER BFP8 Inference")
     model_wrapper.load_model()
-    quantize_model(model_wrapper, QuantMode.LAYER_BFP, 8, 8)
+    quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.LAYER_BFP})
     model_wrapper.inference("validate")
 
     # TEST 5
     print("CHANNEL BFP8 Inference") 
     # note: CHANNEL_BFP can be worse than LAYER_BFP, if calibration size is small!
     model_wrapper.load_model()
-    quantize_model(model_wrapper, QuantMode.CHANNEL_BFP, 8, 8)
+    quantize_model(model_wrapper,  {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
     model_wrapper.inference("validate") 
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "channel_bfp8"))
 

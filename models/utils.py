@@ -32,6 +32,29 @@ def onnx_to_torch_name_cast(onnx_name, onnx_type, sep="/"):
     torch_name = ".".join(buffer)
     return torch_name
 
+def _insert_threshold_relu(onnx_model, sideband_info):
+    if "threshold_relu" not in sideband_info:
+        return
+    info = sideband_info["threshold_relu"]
+    for index, node in enumerate(onnx_model.graph.node):
+        if node.op_type != "Relu":
+            continue
+        onnx_model.graph.node.remove(node)
+        layer_name = onnx_to_torch_name_cast(node.name, node.op_type)
+        if "quantization" in sideband_info.keys():
+            layer_name += ".1" # nn.Sequential(QuantAct, module, QuantAct)
+        new_node_name = "/".join(node.name.split("/")[:-1] + ["ThresholdedReLU"])
+        new_node = onnx.helper.make_node(
+            "ThresholdedRelu",
+            name= new_node_name,
+            inputs=[*node.input],
+            outputs=node.output,
+            alpha = info[layer_name]
+        )
+        onnx_model.graph.node.insert(index, new_node)
+        next_node = next(filter(lambda x: node.output[0] in x.input, onnx_model.graph.node))
+        next_node.input[0] = new_node.output[0]
+
 def _annotate_quantization(onnx_model, sideband_info):
     from quantization.utils import QuantMode
 
@@ -79,9 +102,14 @@ def generate_onnx_files(self, output_path):
     # if model is compressed
     if len(self.sideband_info) > 0: 
         onnx_model = onnx.load(f32_onnx_path)
+        # note: the order of the following passes matters
+        _insert_threshold_relu(onnx_model, self.sideband_info)
         _annotate_quantization(onnx_model, self.sideband_info)
         _annotate_sparsity(onnx_model, self.sideband_info)
         fpgaconvnet_onnx_path = os.path.join(output_path, f"{self.model_name}.onnx")
         onnx.save(onnx_model, fpgaconvnet_onnx_path)
+    else:
+        fpgaconvnet_onnx_path = f32_onnx_path
 
     self.model = model_copy # restore model
+    return fpgaconvnet_onnx_path

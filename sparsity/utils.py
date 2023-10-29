@@ -43,7 +43,6 @@ class WindowDataCollector():
         if self.ma_size > 0:
             self.ma_buffer = None
 
-
     def _update_hist(self, newValues):
         # update hist
         zero_hists = F.one_hot(self.window_size - torch.count_nonzero(newValues, dim = -1), num_classes = self.window_size + 1)
@@ -165,3 +164,14 @@ def measure_model_sparsity(model_wrapper):
     model_wrapper.sideband_info["sparsity"] = {}
     for name, module in named_sparse_modules.items():
         model_wrapper.sideband_info["sparsity"][name] = {"hist": module.statistics.hist}
+
+    # avg sparsity
+    zeros = 0
+    non_zeros = 0
+    for name, module in named_sparse_modules.items():
+        hist = module.statistics.hist
+        for i in range(hist.shape[1]):
+            zeros += (hist[:, i] * i).sum()
+            non_zeros += (hist[:, i] * (hist.shape[1] - i)).sum()
+    avg_sparsity = zeros / (zeros + non_zeros)
+    return avg_sparsity.item()
