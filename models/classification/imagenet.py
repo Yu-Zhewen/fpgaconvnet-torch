@@ -14,8 +14,6 @@ from models.base import TorchModelWrapper
 from models.classification.utils import _inference, BasicBlockReluFixed, BottleneckReluFixed
 from torchvision.models.resnet import BasicBlock, Bottleneck
 
-DATASET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))
-
 class ImagenetModelWrapper(TorchModelWrapper):
     def __init__(self, model_name, input_size=(1, 3, 224, 224), num_classes=1000):
         self.input_size = input_size
@@ -25,7 +23,7 @@ class ImagenetModelWrapper(TorchModelWrapper):
     def load_data(self, batch_size, workers, calib_size=1000):
         assert self.input_size[2] == 224, "todo: support other input sizes / transforms"
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
+        DATASET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))
         valdir = os.path.join(DATASET_PATH, 'val')
         val_transforms = transforms.Compose([
             transforms.Resize(256),
