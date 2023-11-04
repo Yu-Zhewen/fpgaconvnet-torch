@@ -23,19 +23,20 @@ class UltralyticsModelWrapper(TorchModelWrapper):
     def load_data(self, batch_size, workers):
         from ultralytics import settings
 
-        DATASET_PATH = os.environ.get("COCO_PATH", os.path.expanduser("~/dataset/ultralytics/datasets"))
-        assert DATASET_PATH.endswith("/datasets"), "dataset path should end with 'datasets'"
+        COCO_PATH = os.environ.get("COCO_PATH", os.path.expanduser("~/dataset/ultralytics/datasets"))
+        assert COCO_PATH.endswith("/datasets"), "dataset path should end with 'datasets'"
         # set dataset path
-        settings.update({'datasets_dir': DATASET_PATH})
+        settings.update({'datasets_dir': COCO_PATH})
 
         # note: ultralytics automatically handle the dataloaders, only need to set the path
         self.data_loaders['calibrate'] = "coco128.yaml"
-        self.data_loaders['validate'] = "coco128.yaml"
+        self.data_loaders['validate'] = "coco.yaml"
         
         self.batch_size = batch_size
         self.workers = workers
         
     def inference(self, mode="validate"):
+        print("Inference mode: {}".format(mode))
         self.yolo.model = self.model
         return self.yolo.val(batch=self.batch_size, workers=self.workers,
             data=self.data_loaders[mode], plots=False)

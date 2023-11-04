@@ -12,8 +12,8 @@ class QuantMode(Enum):
     CHANNEL_BFP = 3
 
 # todo: support 3D layers
-ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d)
-WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Linear)
+ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d)
+WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d)
 
 def linear_quantize(x, scaling_factor, zero_point):
     if len(x.shape) == 4:
