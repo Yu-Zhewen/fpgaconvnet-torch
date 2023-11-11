@@ -21,6 +21,10 @@ class ImagenetModelWrapper(TorchModelWrapper):
         super().__init__(model_name)
 
     def load_data(self, batch_size, workers, calib_size=1000):
+        # todo: download dataset
+        # https://image-net.org/challenges/LSVRC/2012/2012-downloads.php
+        # https://github.com/pytorch/examples/blob/main/imagenet/extract_ILSVRC.sh
+
         assert self.input_size[2] == 224, "todo: support other input sizes / transforms"
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         IMAGENET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))

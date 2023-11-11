@@ -20,6 +20,9 @@ class BrainModelWrapper(TorchModelWrapper):
             self.model = self.model.cuda()
 
     def load_data(self, batch_size, workers):
+        # todo: download dataset
+        # https://www.kaggle.com/datasets/mateuszbuda/lgg-mri-segmentation
+
         LGGMRI_PATH = os.environ.get("LGGMRI_PATH", os.path.expanduser("~/dataset/lgg-mri-segmentation/kaggle_3m"))
     
         val_dataset = BrainSegmentationDataset(
