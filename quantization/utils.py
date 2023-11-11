@@ -182,7 +182,14 @@ def quantize_model(model_wrapper, info):
     weight_quantizer = ModelParamQuantizer(model_wrapper)
     for name, module in model_wrapper.named_modules(): 
         if isinstance(module, WEIGHT_QUANT_MODULES):
-            quantized_weight = weight_quantizer.apply(module.weight, info["weight_width"], info["mode"])
-            module.weight.data.copy_(quantized_weight)
+            if isinstance(module, nn.ConvTranspose2d):
+                weight = module.weight.data.transpose(0, 1)
+            else:
+                weight = module.weight.data
+            quantized_weight = weight_quantizer.apply(weight, info["weight_width"], info["mode"])
+            if isinstance(module, nn.ConvTranspose2d):
+                module.weight.data.copy_(quantized_weight.transpose(0, 1))
+            else:
+                module.weight.data.copy_(quantized_weight)
     activation_quantizer = ModelActQuantizer(model_wrapper)
     activation_quantizer.apply(info["data_width"], info["mode"])

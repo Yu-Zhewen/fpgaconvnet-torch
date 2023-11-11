@@ -60,7 +60,6 @@ def main():
     quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.NETWORK_FP})
     model_wrapper.inference("validate")
 
-    '''
     # TEST 4
     print("LAYER BFP8 Inference")
     model_wrapper.load_model()
@@ -74,8 +73,6 @@ def main():
     quantize_model(model_wrapper,  {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
     model_wrapper.inference("validate") 
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "channel_bfp8"))
-    '''
-    # todo: fix bfp for convtranspose2d, weight shape (in_channels, out_channels, kernel_size, kernel_size)
 
 if __name__ == '__main__':
     main()
