@@ -1,3 +1,5 @@
+import os
+
 def initialize_wrapper(dataset_name, model_name,
                        dataset_path, batch_size, workers):
     model_wrapper = None
