@@ -145,7 +145,7 @@ class BasicBlockReluFixed(nn.Module):
 # separate relu instances 
 class BottleneckReluFixed(nn.Module):
     def __init__(self, origin_block):
-        super(BottleneckReluFixed).__init__()
+        super(BottleneckReluFixed, self).__init__()
 
         self.conv1 = origin_block.conv1
         self.bn1 = origin_block.bn1
