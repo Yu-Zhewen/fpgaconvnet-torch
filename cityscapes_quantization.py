@@ -5,12 +5,12 @@ import pathlib
 import random
 import torch
 
-from models.segmentation.camvid import NncfModelWrapper
+from models.segmentation.cityscapes import MmsegmentationModelWrapper
 from quantization.utils import QuantMode, quantize_model
 
 def main():
-    parser = argparse.ArgumentParser(description='PyTorch Camvid Segmentation')
-    parser.add_argument('--data', metavar='DIR', default="~/dataset/CamVid",
+    parser = argparse.ArgumentParser(description='PyTorch CityScapes Segmentation')
+    parser.add_argument('--data', metavar='DIR', default="~/dataset/cityscapes",
                         help='path to dataset')
     parser.add_argument('-a', '--arch', metavar='ARCH', default='unet',
                         help='model architecture')
@@ -38,41 +38,41 @@ def main():
     random.seed(0)
     torch.manual_seed(0)
 
-    os.environ['CAMVID_PATH'] = os.path.expanduser(args.data)
-    model_wrapper = NncfModelWrapper(args.arch)
-    model_wrapper.load_data(args.batch_size, args.workers)
+    os.environ['CITYSCAPES_PATH'] = os.path.expanduser(args.data)
+    model_wrapper = MmsegmentationModelWrapper(args.arch)
+    #model_wrapper.load_data(args.batch_size, args.workers)
 
     # TEST 1
     print("FLOAT32 Inference")
     model_wrapper.load_model()
-    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "float32"))
-    model_wrapper.inference("test")
+    #model_wrapper.generate_onnx_files(os.path.join(args.output_path, "float32"))
+    model_wrapper.inference("validate")
  
     # TEST 2
     print("NETWORK FP16 Inference")
     model_wrapper.load_model()
     quantize_model(model_wrapper, {'weight_width': 16, 'data_width': 16, 'mode': QuantMode.NETWORK_FP})
-    model_wrapper.inference("test")
+    model_wrapper.inference("validate")
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "fp16"))
 
     # TEST 3
     print("NETWORK FP8 Inference")
     model_wrapper.load_model()
     quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.NETWORK_FP})
-    model_wrapper.inference("test")
+    model_wrapper.inference("validate")
 
     # TEST 4
     print("LAYER BFP8 Inference")
     model_wrapper.load_model()
     quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.LAYER_BFP})
-    model_wrapper.inference("test")
+    model_wrapper.inference("validate")
 
     # TEST 5
     print("CHANNEL BFP8 Inference") 
     # note: CHANNEL_BFP can be worse than LAYER_BFP, if calibration size is small!
     model_wrapper.load_model()
     quantize_model(model_wrapper,  {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
-    model_wrapper.inference("test") 
+    model_wrapper.inference("validate") 
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "channel_bfp8"))
 
 if __name__ == '__main__':

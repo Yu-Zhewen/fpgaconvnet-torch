@@ -12,7 +12,7 @@ from PIL import Image
 from torch.utils import data
 
 
-class CamvidModelWrapper(TorchModelWrapper):
+class NncfModelWrapper(TorchModelWrapper):
     def __init__(self, model_name, input_size=(1, 3, 368, 480), num_classes=12):
         self.input_size = input_size
         self.num_classes = num_classes
