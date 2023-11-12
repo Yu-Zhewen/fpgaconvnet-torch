@@ -32,6 +32,8 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
         pass
 
     def inference(self, mode="validate"):
+        mode = "validate" if mode == "test" else mode
+        print("Inference mode: {}".format(mode))
         if mode in ["validate", "calibrate"]:
             results = self.runner.val()
             print(results)

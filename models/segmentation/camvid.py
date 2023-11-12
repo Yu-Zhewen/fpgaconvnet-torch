@@ -59,6 +59,7 @@ class NncfModelWrapper(TorchModelWrapper):
     def inference(self, mode="validate"):
         if mode == "validate":
             print("Warning:Use CamVid test dataset instead?")
+        print("Inference mode: {}".format(mode))
         data_loader = self.data_loaders[mode]
         self.model.eval()
 

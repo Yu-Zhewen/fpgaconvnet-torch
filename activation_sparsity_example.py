@@ -5,15 +5,17 @@ import pathlib
 import random
 import torch
 
-from models.classification.imagenet import TorchvisionModelWrapper
+from models import initialize_wrapper
 from quantization.utils import QuantMode, quantize_model
 from sparsity.utils import measure_model_sparsity
 
 def main():
-    parser = argparse.ArgumentParser(description='PyTorch ImageNet')
-    parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
+    parser = argparse.ArgumentParser(description='Sparsity Example')
+    parser.add_argument('--dataset_name', default="imagenet", type=str,
+                        help='dataset name') 
+    parser.add_argument('--dataset_path', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                         help='path to dataset')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+    parser.add_argument('--model_name', metavar='ARCH', default='resnet18',
                         help='model architecture')
 
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -39,14 +41,12 @@ def main():
     random.seed(0)
     torch.manual_seed(0)
 
-    os.environ['IMAGENET_PATH'] = os.path.expanduser(args.data)
-    model_wrapper = TorchvisionModelWrapper(args.arch)
-    model_wrapper.load_data(args.batch_size, args.workers)
+    model_wrapper = initialize_wrapper(args.dataset_name, args.model_name,
+                        os.path.expanduser(args.dataset_path), args.batch_size, args.workers)
 
     print("NETWORK FP16 Inference")
-    model_wrapper.load_model()
     quantize_model(model_wrapper, {'weight_width': 16, 'data_width': 16, 'mode': QuantMode.NETWORK_FP})
-    top1, top5 = model_wrapper.inference("validate")
+    top1, top5 = model_wrapper.inference("test")
 
     # post-activation sparsity has zero impact on accuracy
     # measure sparsity-related stats on calibration set

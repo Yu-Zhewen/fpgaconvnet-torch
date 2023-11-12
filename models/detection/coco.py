@@ -40,6 +40,7 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         self.workers = workers
         
     def inference(self, mode="validate"):
+        mode = "validate" if mode == "test" else mode
         print("Inference mode: {}".format(mode))
         self.yolo.model = self.model
         return self.yolo.val(batch=self.batch_size, workers=self.workers,

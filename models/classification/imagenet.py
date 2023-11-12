@@ -41,7 +41,7 @@ class ImagenetModelWrapper(TorchModelWrapper):
             num_workers=workers, pin_memory=True)
         self.data_loaders['validate'] = val_loader
 
-        traindir = os.path.join(DATASET_PATH, 'train')
+        traindir = os.path.join(IMAGENET_PATH, 'train')
         train_transforms = transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
@@ -79,6 +79,7 @@ class ImagenetModelWrapper(TorchModelWrapper):
         self.data_loaders['calibrate'] = calib_loader
 
     def inference(self, mode="validate"):
+        mode = "validate" if mode == "test" else mode
         print("Inference mode: {}".format(mode))
         return _inference(self.data_loaders[mode], self.model, nn.CrossEntropyLoss(), silence=(mode == "calibrate"))
 

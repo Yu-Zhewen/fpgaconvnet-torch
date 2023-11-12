@@ -40,6 +40,7 @@ class BrainModelWrapper(TorchModelWrapper):
         self.data_loaders['calibrate'] = val_loader # todo: support calibrate
 
     def inference(self, mode='validate'):
+        mode = "validate" if mode == "test" else mode
         print("Inference mode: {}".format(mode))
         loader = self.data_loaders[mode]
         self.model.eval()
