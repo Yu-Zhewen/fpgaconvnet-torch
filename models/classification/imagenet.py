@@ -20,7 +20,7 @@ class ImagenetModelWrapper(TorchModelWrapper):
         self.num_classes = num_classes
         super().__init__(model_name)
 
-    def load_data(self, batch_size, workers, calib_size=1000):
+    def load_data(self, batch_size, workers, calib_size=50000):
         # todo: download dataset
         # https://image-net.org/challenges/LSVRC/2012/2012-downloads.php
         # https://github.com/pytorch/examples/blob/main/imagenet/extract_ILSVRC.sh
