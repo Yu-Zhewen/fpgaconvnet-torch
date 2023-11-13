@@ -22,7 +22,7 @@ python threshold_relu_example.py
 * `cityscapes`: `unet`
 
 ## Quantization Results 
-@ commit
+@ commit ec09e56
 ```
 bash scripts/run_quantization.sh
 ```
