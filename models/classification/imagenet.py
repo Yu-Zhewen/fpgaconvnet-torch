@@ -20,11 +20,15 @@ class ImagenetModelWrapper(TorchModelWrapper):
         self.num_classes = num_classes
         super().__init__(model_name)
 
-    def load_data(self, batch_size, workers, calib_size=1000):
+    def load_data(self, batch_size, workers, calib_size=50000):
+        # todo: download dataset
+        # https://image-net.org/challenges/LSVRC/2012/2012-downloads.php
+        # https://github.com/pytorch/examples/blob/main/imagenet/extract_ILSVRC.sh
+
         assert self.input_size[2] == 224, "todo: support other input sizes / transforms"
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        DATASET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))
-        valdir = os.path.join(DATASET_PATH, 'val')
+        IMAGENET_PATH = os.environ.get("IMAGENET_PATH", os.path.expanduser("~/dataset/ILSVRC2012_img"))
+        valdir = os.path.join(IMAGENET_PATH, 'val')
         val_transforms = transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -37,7 +41,7 @@ class ImagenetModelWrapper(TorchModelWrapper):
             num_workers=workers, pin_memory=True)
         self.data_loaders['validate'] = val_loader
 
-        traindir = os.path.join(DATASET_PATH, 'train')
+        traindir = os.path.join(IMAGENET_PATH, 'train')
         train_transforms = transforms.Compose([
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
@@ -75,6 +79,8 @@ class ImagenetModelWrapper(TorchModelWrapper):
         self.data_loaders['calibrate'] = calib_loader
 
     def inference(self, mode="validate"):
+        mode = "validate" if mode == "test" else mode
+        print("Inference mode: {}".format(mode))
         return _inference(self.data_loaders[mode], self.model, nn.CrossEntropyLoss(), silence=(mode == "calibrate"))
 
     def onnx_exporter(self, onnx_path):

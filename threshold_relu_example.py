@@ -7,7 +7,7 @@ import torch
 
 import numpy as np
 
-from models.classification.imagenet import TorchvisionModelWrapper
+from models import initialize
 from optimiser_interface.utils import opt_cli_launcher, load_hardware_checkpoint
 from quantization.utils import QuantMode, quantize_model
 from sparsity.relu_utils import apply_threshold_relu
@@ -43,10 +43,12 @@ def get_slowest_threshold_relu_conv(net):
     return slowest_layers_indices
 
 def main():
-    parser = argparse.ArgumentParser(description='PyTorch ImageNet')
-    parser.add_argument('--data', metavar='DIR', default="~/dataset/ILSVRC2012_img",
+    parser = argparse.ArgumentParser(description='Thresholded ReLU Example')
+    parser.add_argument('--dataset_name', default="imagenet", type=str,
+                        help='dataset name') 
+    parser.add_argument('--dataset_path', metavar='DIR', default="~/dataset/ILSVRC2012_img",
                         help='path to dataset')
-    parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+    parser.add_argument('--model_name', metavar='ARCH', default='resnet18',
                         help='model architecture')
 
     parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
@@ -82,12 +84,10 @@ def main():
     random.seed(0)
     torch.manual_seed(0)
 
-    os.environ['IMAGENET_PATH'] = os.path.expanduser(args.data)
-    model_wrapper = TorchvisionModelWrapper(args.arch)
-    model_wrapper.load_data(args.batch_size, args.workers)
+    model_wrapper = initialize_wrapper(args.dataset_name, args.model_name,
+                        os.path.expanduser(args.dataset_path), args.batch_size, args.workers)
 
     print("NETWORK FP16 Inference")
-    model_wrapper.load_model()
     quantize_model(model_wrapper, {'weight_width': 8, 'data_width': 8, 'mode': QuantMode.NETWORK_FP})   
     model_copy = copy.deepcopy(model_wrapper.model)
 
@@ -99,7 +99,7 @@ def main():
         log_dir = args.output_path + "/run_" + str(run)
         pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
 
-        top1, top5 = model_wrapper.inference("validate")
+        top1, top5 = model_wrapper.inference("test")
         avg_sparsity = measure_model_sparsity(model_wrapper)
         sparse_onnx_path = model_wrapper.generate_onnx_files(log_dir)
 

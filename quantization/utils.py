@@ -12,8 +12,8 @@ class QuantMode(Enum):
     CHANNEL_BFP = 3
 
 # todo: support 3D layers
-ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d)
-WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Linear)
+ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d)
+WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d)
 
 def linear_quantize(x, scaling_factor, zero_point):
     if len(x.shape) == 4:
@@ -182,7 +182,14 @@ def quantize_model(model_wrapper, info):
     weight_quantizer = ModelParamQuantizer(model_wrapper)
     for name, module in model_wrapper.named_modules(): 
         if isinstance(module, WEIGHT_QUANT_MODULES):
-            quantized_weight = weight_quantizer.apply(module.weight, info["weight_width"], info["mode"])
-            module.weight.data.copy_(quantized_weight)
+            if isinstance(module, nn.ConvTranspose2d):
+                weight = module.weight.data.transpose(0, 1)
+            else:
+                weight = module.weight.data
+            quantized_weight = weight_quantizer.apply(weight, info["weight_width"], info["mode"])
+            if isinstance(module, nn.ConvTranspose2d):
+                module.weight.data.copy_(quantized_weight.transpose(0, 1))
+            else:
+                module.weight.data.copy_(quantized_weight)
     activation_quantizer = ModelActQuantizer(model_wrapper)
     activation_quantizer.apply(info["data_width"], info["mode"])
