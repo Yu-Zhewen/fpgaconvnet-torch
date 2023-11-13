@@ -26,9 +26,10 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
         state_dict = torch.hub.load_state_dict_from_url(checkpoint_path)['state_dict']
         self.model.load_state_dict(state_dict)
 
-    def load_data(self):
+    def load_data(self, batch_size, workers): # todo: fix this
         # let the runner handle the data loading
         # todo: download cityscapes dataset
+        # https://github.com/open-mmlab/mmsegmentation/blob/main/docs/en/user_guides/2_dataset_prepare.md#prepare-datasets
         pass
 
     def inference(self, mode="validate"):
