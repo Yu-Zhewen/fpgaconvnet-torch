@@ -17,7 +17,9 @@ python threshold_relu_example.py
 ## Model Zoo
 
 * `imagenet`: `resnet18`, `resnet50`, `mobilenet_v2`, `repvgg_a0`
- 
+* `coco`: `yolov8n`
+* `camvid`: `unet`
+* `cityscapes`: `unet`
 
 ## Quantization Results
 
@@ -28,6 +30,21 @@ python threshold_relu_example.py
 | resnet50     | torchvision | 76.13   | 76.10   | 0.36   | 74.38        | 75.75          |
 | mobilenet_v2 | torchvision | 71.87   | 71.76   | 0.10   | 53.68        | 69.51          |
 | repvgg_a0    | timm        | 72.41   | 72.40   | 0.21   | 0.21         | 66.08          |
+
+### coco (mAP50-95)
+| Model   | Source      | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|---------|-------------|---------|---------|--------|--------------|----------------|
+| yolov8n | ultralytics |         |         |        |              |                |
+
+### camvid (mIOU)
+| Model | Source | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|-------|--------|---------|---------|--------|--------------|----------------|
+| unet  | nncf   | 0.54    | 0.54    | 0.41   | 0.53         | 0.53           |
+
+### cityscapes (mIOU) 
+| Model | Source         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|-------|----------------|---------|---------|--------|--------------|----------------|
+| unet  | mmsegmentation | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo

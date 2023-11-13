@@ -15,8 +15,8 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         from ultralytics import YOLO 
         self.yolo = YOLO(self.model_name)
         self.model = self.yolo.model
-        if torch.cuda.is_available():
-            self.model = self.model.cuda()
+        #if torch.cuda.is_available():
+        #    self.model = self.model.cuda()
 
         # utlralytics conv bn fusion is currently not working for compressed model
         # disbale it for now
@@ -44,6 +44,7 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         print("Inference mode: {}".format(mode))
         self.yolo.model = self.model
         return self.yolo.val(batch=self.batch_size, workers=self.workers,
+            device="cpu" if not torch.cuda.is_available() else f"cuda:{torch.cuda.current_device()}", 
             data=self.data_loaders[mode], plots=False)
 
     def onnx_exporter(self, onnx_path):
