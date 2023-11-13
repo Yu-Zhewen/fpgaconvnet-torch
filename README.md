@@ -21,9 +21,10 @@ python threshold_relu_example.py
 * `camvid`: `unet`
 * `cityscapes`: `unet`
 
-## Quantization Results
+## Quantization Results 
+@ commit
 
-### imagenet (top-1 val acc)
+### imagenet (val, top-1 acc)
 | Model        | Source      | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |--------------|-------------|---------|---------|--------|--------------|----------------|
 | resnet18     | torchvision | 69.76   | 69.76   | 1.03   | 68.48        | 69.26          |
@@ -31,17 +32,17 @@ python threshold_relu_example.py
 | mobilenet_v2 | torchvision | 71.87   | 71.76   | 0.10   | 53.68        | 69.51          |
 | repvgg_a0    | timm        | 72.41   | 72.40   | 0.21   | 0.21         | 66.08          |
 
-### coco (mAP50-95)
+### coco (val, mAP50-95)
 | Model   | Source      | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |---------|-------------|---------|---------|--------|--------------|----------------|
-| yolov8n | ultralytics |         |         |        |              |                |
+| yolov8n | ultralytics | 37.1    | 37.1    | 0.0    | 0.0          | 35.1           |
 
-### camvid (mIOU)
+### camvid (val, mIOU)
 | Model | Source | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|--------|---------|---------|--------|--------------|----------------|
 | unet  | nncf   | 0.54    | 0.54    | 0.41   | 0.53         | 0.53           |
 
-### cityscapes (mIOU) 
+### cityscapes (val, mIOU) 
 | Model | Source         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|----------------|---------|---------|--------|--------------|----------------|
 | unet  | mmsegmentation | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |

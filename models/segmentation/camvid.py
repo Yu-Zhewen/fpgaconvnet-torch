@@ -46,19 +46,20 @@ class NncfModelWrapper(TorchModelWrapper):
         val_loader = data.DataLoader(
             val_data,
             batch_size=batch_size, shuffle=False,
-            num_workers=workers, pin_memory=True)
+            num_workers=workers, pin_memory=True,
+            collate_fn=collate_fn)
         test_loader = data.DataLoader(
             test_data,
             batch_size=batch_size, shuffle=False,
-            num_workers=workers, pin_memory=True)
+            num_workers=workers, pin_memory=True,
+            collate_fn=collate_fn)
         
         self.data_loaders['calibrate'] = val_loader
         self.data_loaders['validate'] = val_loader
         self.data_loaders['test'] = test_loader
 
     def inference(self, mode="validate"):
-        if mode == "validate":
-            print("Warning:Use CamVid test dataset instead?")
+        mode = "validate" if mode == "test" else mode
         print("Inference mode: {}".format(mode))
         data_loader = self.data_loaders[mode]
         self.model.eval()
@@ -101,6 +102,19 @@ class NncfModelWrapper(TorchModelWrapper):
             random_input = random_input.cuda()
         torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
 
+def cat_list(images, fill_value=0):
+    max_size = tuple(max(s) for s in zip(*[img.shape for img in images]))
+    batch_shape = (len(images),) + max_size
+    batched_imgs = images[0].new(*batch_shape).fill_(fill_value)
+    for img, pad_img in zip(images, batched_imgs):
+        pad_img[..., : img.shape[-2], : img.shape[-1]].copy_(img)
+    return batched_imgs
+
+def collate_fn(batch):
+    images, targets = list(zip(*batch))
+    batched_imgs = cat_list(images, fill_value=0)
+    batched_targets = cat_list(targets, fill_value=255)
+    return batched_imgs, batched_targets
 
 class Compose:
     def __init__(self, transforms):
@@ -379,7 +393,7 @@ class CamVid(data.Dataset):
             ("sky", (128, 128, 128)),
             ("building", (128, 0, 0)),
             ("pole", (192, 192, 128)),
-            ("road_marking", (255, 69, 0)),
+            #("road_marking", (255, 69, 0)),
             ("road", (128, 64, 128)),
             ("pavement", (60, 40, 222)),
             ("tree", (128, 128, 0)),
