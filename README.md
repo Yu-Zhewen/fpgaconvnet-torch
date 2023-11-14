@@ -21,7 +21,7 @@ python threshold_relu_example.py
 * `camvid`: `unet`
 * `cityscapes`: `unet`
 
-## Quantization Results 
+## Quantization Results
 @ commit ec09e56
 ```
 bash scripts/run_quantization.sh
@@ -44,8 +44,9 @@ bash scripts/run_quantization.sh
 | Model | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|-------------------------------------------------|---------|---------|--------|--------------|----------------|
 | unet  | [nncf](https://github.com/openvinotoolkit/nncf) | 71.95   | 71.95   | 61.02  | 71.60        | 71.85          |
+| unet-approx  | [nncf](https://github.com/openvinotoolkit/nncf) | 71.67   | -   | -  | -        | -          |
 
-### cityscapes (val, mIOU) 
+### cityscapes (val, mIOU)
 | Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | unet  | [mmsegmentation](https://github.com/open-mmlab/mmsegmentation) | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |
@@ -54,4 +55,4 @@ bash scripts/run_quantization.sh
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
 * Model: https://github.com/AlexMontgomerie/fpgaconvnet-model
 * HLS: https://github.com/AlexMontgomerie/fpgaconvnet-hls
-* Tutorial: https://github.com/AlexMontgomerie/fpgaconvnet-tutorial   
+* Tutorial: https://github.com/AlexMontgomerie/fpgaconvnet-tutorial
