@@ -1,9 +1,11 @@
+import onnx
 import os
 import torch
 
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 from models.base import TorchModelWrapper
+from onnxsim import simplify
 
 class MmsegmentationModelWrapper(TorchModelWrapper):
     def load_model(self, eval=True):
@@ -44,3 +46,7 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
         if torch.cuda.is_available():
             random_input = random_input.cuda()
         torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
+
+        model = onnx.load(onnx_path)
+        model_simp, check = simplify(model)
+        onnx.save(model_simp, onnx_path)

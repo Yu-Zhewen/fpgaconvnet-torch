@@ -31,6 +31,7 @@ def opt_cli_launcher(model_name, onnx_path, output_dir,
     sys.argv += ['--objective', opt_obj]
     sys.argv += ['--optimiser', opt_solver]
     sys.argv += ['--optimiser_config_path', opt_cfg_path]
+    sys.argv += ['--custom_onnx']
     main()
     sys.argv = saved_argv
 
