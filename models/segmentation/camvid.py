@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 
 from collections import OrderedDict
 from models.base import TorchModelWrapper
+from models.segmentation.utils import apply_conv_transp_approx
 from PIL import Image
 from torch.utils import data
 
@@ -18,7 +19,7 @@ class NncfModelWrapper(TorchModelWrapper):
         self.num_classes = num_classes
         super().__init__(model_name)
 
-    def load_model(self, eval=True):
+    def load_model(self, eval=True, approx_transpose_conv=True):
         assert self.model_name == 'unet'
 
         self.model = UNet(input_size_hw=self.input_size[2:], in_channels=self.input_size[1], n_classes=self.num_classes)
@@ -27,6 +28,10 @@ class NncfModelWrapper(TorchModelWrapper):
         # remove 'module.' prefix
         state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
         self.model.load_state_dict(state_dict)
+
+        if approx_transpose_conv:
+            apply_conv_transp_approx(self.model)
+
         if torch.cuda.is_available():
             self.model = self.model.cuda()
     

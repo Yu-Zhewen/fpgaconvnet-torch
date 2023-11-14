@@ -41,10 +41,10 @@ bash scripts/run_quantization.sh
 | yolov8n | [ultralytics](https://github.com/ultralytics/ultralytics) | 37.1    | 37.1    | 0.0    | 0.0          | 35.1           |
 
 ### camvid (val, mIOU)
-| Model | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
-|-------|-------------------------------------------------|---------|---------|--------|--------------|----------------|
-| unet  | [nncf](https://github.com/openvinotoolkit/nncf) | 71.95   | 71.95   | 61.02  | 71.60        | 71.85          |
-| unet-approx  | [nncf](https://github.com/openvinotoolkit/nncf) | 71.67   | -   | -  | -        | -          |
+| Model         | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|---------------|-------------------------------------------------|---------|---------|--------|--------------|----------------|
+| unet          | [nncf](https://github.com/openvinotoolkit/nncf) | 71.95   | 71.95   | 61.02  | 71.60        | 71.85          |
+| unet-bilinear | [nncf](https://github.com/openvinotoolkit/nncf) | 71.67   | 71.67   | 60.62  | 71.40        | 71.75          |
 
 ### cityscapes (val, mIOU)
 | Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |

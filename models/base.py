@@ -28,5 +28,8 @@ class TorchModelWrapper(nn.Module, ABC):
     def forward(self, x):
         return self.model(x)
 
-    from models.utils import replace_modules
+    def replace_modules(self, replace_dict):
+        from models.utils import replace_modules
+        replace_modules(self.model, replace_dict)
+
     from models.utils import generate_onnx_files

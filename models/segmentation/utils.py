@@ -1,9 +1,10 @@
-import torch
-from torch import nn
 import math
+import torch
 
-CONV_TRANSP_MODULES = (
-    nn.ConvTranspose1d, nn.ConvTranspose2d, nn.ConvTranspose3d)
+from models.utils import replace_modules
+from torch import nn
+
+CONV_TRANSP_MODULES = (nn.ConvTranspose1d, nn.ConvTranspose2d, nn.ConvTranspose3d)
 
 class ConvTranspApproxLayer(nn.Module):
     def __init__(self, parent_module, upsampling_mode, kernel_approx_strategy):
@@ -62,12 +63,11 @@ class ConvTranspApproxLayer(nn.Module):
 
         return x
 
-
-def apply_conv_transp_approx(model_wrapper, upsampling_mode, kernel_approx_strategy):
+def apply_conv_transp_approx(model, upsampling_mode="bilinear", kernel_approx_strategy="average"):
     replace_dict = {}
-    for name, module in model_wrapper.named_modules():
+    for name, module in model.named_modules():
         if isinstance(module, CONV_TRANSP_MODULES):
             new_module = ConvTranspApproxLayer(
                 parent_module=module, upsampling_mode=upsampling_mode, kernel_approx_strategy=kernel_approx_strategy)
             replace_dict[module] = new_module
-    model_wrapper.replace_modules(replace_dict)
+    replace_modules(model, replace_dict)
