@@ -1,5 +1,6 @@
 import os
 
+
 def initialize_wrapper(dataset_name, model_name,
                        dataset_path, batch_size, workers):
     model_wrapper = None
@@ -31,10 +32,16 @@ def initialize_wrapper(dataset_name, model_name,
         if model_name in ["unet"]:
             from models.segmentation.lggmri import BrainModelWrapper
             model_wrapper = BrainModelWrapper(model_name)
-    
+    elif dataset_name == "ucf101":
+        os.environ['UCF101_PATH'] = dataset_path
+        if model_name in ["x3d_s", "x3d_m"]:
+            from models.action_recognition.ucf101 import MmactionModelWrapper
+            model_wrapper = MmactionModelWrapper(model_name)
+
     if model_wrapper is None:
         raise NotImplementedError("Unknown dataset/model combination")
 
     model_wrapper.load_data(batch_size, workers)
     model_wrapper.load_model()
+
     return model_wrapper
