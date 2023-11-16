@@ -23,7 +23,7 @@ class NncfModelWrapper(TorchModelWrapper):
         assert self.model_name == 'unet'
 
         self.model = UNet(input_size_hw=self.input_size[2:], in_channels=self.input_size[1], n_classes=self.num_classes)
-        checkpoint = torch.hub.load_state_dict_from_url('https://storage.openvinotoolkit.org/repositories/nncf/models/v2.6.0/torch/unet_camvid.pth')
+        checkpoint = torch.hub.load_state_dict_from_url('https://storage.openvinotoolkit.org/repositories/nncf/models/v2.6.0/torch/unet_camvid.pth', file_name="unet_camvid.pth")
         state_dict = checkpoint['state_dict']
         # remove 'module.' prefix
         state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
@@ -34,16 +34,16 @@ class NncfModelWrapper(TorchModelWrapper):
 
         if torch.cuda.is_available():
             self.model = self.model.cuda()
-    
+
     def load_data(self, batch_size, workers):
         # todo: download dataset
         # https://github.com/alexgkendall/SegNet-Tutorial/tree/master/CamVid
         CAMVID_PATH = os.environ.get("CAMVID_PATH", os.path.expanduser("~/dataset/CamVid"))
- 
+
         val_transforms = Compose([
                     Resize(size=self.input_size[2:]),
                     ToTensor(),
-                    Normalize(mean=[0.39068785, 0.40521392, 0.41434407], std=[0.29652068, 0.30514979, 0.30080369])     
+                    Normalize(mean=[0.39068785, 0.40521392, 0.41434407], std=[0.29652068, 0.30514979, 0.30080369])
                 ])
         val_data = CamVid(CAMVID_PATH, "val", transforms=val_transforms)
         test_data = CamVid(CAMVID_PATH, "test", transforms=val_transforms)
@@ -58,7 +58,7 @@ class NncfModelWrapper(TorchModelWrapper):
             batch_size=batch_size, shuffle=False,
             num_workers=workers, pin_memory=True,
             collate_fn=collate_fn)
-        
+
         self.data_loaders['calibrate'] = val_loader
         self.data_loaders['validate'] = val_loader
         self.data_loaders['test'] = test_loader

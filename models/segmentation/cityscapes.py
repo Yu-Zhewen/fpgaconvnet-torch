@@ -29,7 +29,7 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
 
         self.runner = Runner.from_cfg(cfg)
         self.model = self.runner.model
-        state_dict = torch.hub.load_state_dict_from_url(checkpoint_path)[
+        state_dict = torch.hub.load_state_dict_from_url(checkpoint_path, file_name=f"{self.model_name}.pth")[
             'state_dict']
         self.model.load_state_dict(state_dict)
 

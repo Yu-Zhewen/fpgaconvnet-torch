@@ -48,6 +48,7 @@ def main():
     model_wrapper.inference("test")
     model_wrapper.generate_onnx_files(
         os.path.join(args.output_path, "float32"))
+
     # TEST 2
     print("NETWORK FP16 Inference")
     # reload the model everytime a new quantization mode is tested

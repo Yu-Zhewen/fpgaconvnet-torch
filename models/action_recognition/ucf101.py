@@ -25,7 +25,7 @@ class MmactionModelWrapper(TorchModelWrapper):
             case "x3d_m":
                 config_path = os.path.join(
                     MMACTION_PATH, "configs/recognition/x3d/x3d_m_16x5x1_facebook-kinetics400-rgb.py")
-                checkpoint_path = "https://drive.google.com/uc?export=download&id=1l6x6LOmSfpugMOSuEZYb4foRIC8jXMQU"
+                checkpoint_path = "https://drive.google.com/uc?export=download&id=1_YgpEIb8SK6didDh8dv7Db0Rmb7GAdnn"
 
         cfg = Config.fromfile(config_path)
         # runner only load checkpoint when running inference, too late for compression, as model is already substituted
@@ -48,7 +48,7 @@ class MmactionModelWrapper(TorchModelWrapper):
         # cfg.log_level = "WARNING"
         self.runner = Runner.from_cfg(cfg)
         self.model = self.runner.model
-        state_dict = torch.hub.load_state_dict_from_url(checkpoint_path)[
+        state_dict = torch.hub.load_state_dict_from_url(checkpoint_path, file_name=f"{self.model_name}.pth")[
             'state_dict']
         self.model.load_state_dict(state_dict)
         # load_checkpoint(self.model, checkpoint_path, map_location="cpu")
