@@ -12,11 +12,14 @@ class QuantMode(Enum):
     CHANNEL_BFP = 3
 
 # todo: support 3D layers
-ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.AdaptiveAvgPool2d, nn.AvgPool2d)
-WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Linear, nn.ConvTranspose2d)
+ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear, nn.ConvTranspose2d, nn.ConvTranspose3d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.MaxPool3d, nn.AdaptiveAvgPool2d, nn.AdaptiveAvgPool3d, nn.AvgPool2d, nn.AvgPool3d)
+WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear, nn.ConvTranspose2d, nn.ConvTranspose3d)
 
 def linear_quantize(x, scaling_factor, zero_point):
-    if len(x.shape) == 4:
+    if len(x.shape) == 5:
+        scaling_factor = scaling_factor.view(-1, 1, 1, 1, 1)
+        zero_point = zero_point.view(-1, 1, 1, 1, 1)
+    elif len(x.shape) == 4:
         scaling_factor = scaling_factor.view(-1, 1, 1, 1)
         zero_point = zero_point.view(-1, 1, 1, 1)
     elif len(x.shape) == 2:
@@ -28,7 +31,10 @@ def linear_quantize(x, scaling_factor, zero_point):
     return x_quant
 
 def linear_dequantize(x_quant, scaling_factor, zero_point):
-    if len(x_quant.shape) == 4:
+    if len(x_quant.shape) == 5:
+        scaling_factor = scaling_factor.view(-1, 1, 1, 1, 1)
+        zero_point = zero_point.view(-1, 1, 1, 1, 1)
+    elif len(x_quant.shape) == 4:
         scaling_factor = scaling_factor.view(-1, 1, 1, 1)
         zero_point = zero_point.view(-1, 1, 1, 1)
     elif len(x_quant.shape) == 2:
@@ -37,7 +43,7 @@ def linear_dequantize(x_quant, scaling_factor, zero_point):
     else:
         assert False
     x = (x_quant + zero_point) / scaling_factor
-    return x 
+    return x
 
 #Asymmetric Quantiation: x_q = round((x_f - min_xf) * (2^n - 1) / (max_xf - min_xf))
 def asymmetric_linear_no_clipping(word_length, x_min, x_max):
@@ -87,7 +93,7 @@ class ModelParamQuantizer():
             w_max = w_max.to(w.device)
         scaling_factor, zero_point = asymmetric_linear_no_clipping(word_length, w_min, w_max)
         w_quant = linear_quantize(w, scaling_factor, zero_point)
-        w_quant = saturate(w_quant, word_length)         
+        w_quant = saturate(w_quant, word_length)
         w_approx = linear_dequantize(w_quant, scaling_factor, zero_point)
         return w_approx
 
@@ -126,8 +132,8 @@ class QuantAct(nn.Module):
                 x_max = x.data.max()
             # in-place operation used on multi-gpus
             self.x_min += -self.x_min + torch.minimum(self.x_min, x_min)
-            self.x_max += -self.x_max + torch.maximum(self.x_max, x_max) 
-            return x           
+            self.x_max += -self.x_max + torch.maximum(self.x_max, x_max)
+            return x
         else:
             if self.mode == QuantMode.CHANNEL_BFP:
                 x = x.transpose(0, 1)
@@ -145,9 +151,9 @@ class ModelActQuantizer():
     def apply(self, word_length, mode):
         # add activation quantisation module
         replace_dict ={}
-        for module in self.model_wrapper.modules(): 
+        for module in self.model_wrapper.modules():
             if isinstance(module, ACTIVA_QUANT_MODULES):
-                module_quant = nn.Sequential(*[QuantAct(word_length, mode), copy.deepcopy(module), QuantAct(word_length, mode)]) 
+                module_quant = nn.Sequential(*[QuantAct(word_length, mode), copy.deepcopy(module), QuantAct(word_length, mode)])
                 replace_dict[module] = module_quant
         self.model_wrapper.replace_modules(replace_dict)
         if torch.cuda.is_available():
@@ -180,7 +186,7 @@ class ModelActQuantizer():
 def quantize_model(model_wrapper, info):
     model_wrapper.sideband_info['quantization'] = info
     weight_quantizer = ModelParamQuantizer(model_wrapper)
-    for name, module in model_wrapper.named_modules(): 
+    for name, module in model_wrapper.named_modules():
         if isinstance(module, WEIGHT_QUANT_MODULES):
             if isinstance(module, nn.ConvTranspose2d):
                 weight = module.weight.data.transpose(0, 1)

@@ -51,6 +51,11 @@ bash scripts/run_quantization.sh
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | unet  | [mmsegmentation](https://github.com/open-mmlab/mmsegmentation) | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |
 
+### ucf101 (val-split1, top-1 acc)
+| Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
+| x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 95.58   | 95.69   | -   | -        | -          |
+
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
 * Model: https://github.com/AlexMontgomerie/fpgaconvnet-model
