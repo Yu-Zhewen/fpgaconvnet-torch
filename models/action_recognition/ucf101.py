@@ -21,9 +21,7 @@ class MmactionModelWrapper(TorchModelWrapper):
             case "x3d_s":
                 config_path = os.path.join(
                     MMACTION_PATH, "configs/recognition/x3d/x3d_s_13x6x1_facebook-kinetics400-rgb.py")
-                checkpoint_path = "https://download.openmmlab.com/mmaction/v1.0/recognition/x3d/facebook/x3d_s_13x6x1_facebook-kinetics400-rgb_20201027-623825a0.pth"
-                raise NotImplementedError(
-                    "x3d_s has not been trained yet on UCF101")
+                checkpoint_path = "https://drive.google.com/uc?export=download&id=1vD6XdN9biOnWKFp-BvDC5QCer2on_jLi"
             case "x3d_m":
                 config_path = os.path.join(
                     MMACTION_PATH, "configs/recognition/x3d/x3d_m_16x5x1_facebook-kinetics400-rgb.py")
