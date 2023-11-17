@@ -55,7 +55,7 @@ bash scripts/run_quantization.sh
 | Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | x3d_s  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 93.68  | 93.57   |  1.13   | 90.21  | 93.57   |
-| x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 95.58  | 95.69   |   -     | -      | -   |
+| x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 96.40  | 96.40   |  0.81   | 95.24  | 96.29   |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
