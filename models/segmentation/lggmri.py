@@ -10,12 +10,17 @@ from skimage.exposure import rescale_intensity
 from skimage.transform import resize
 from skimage.io import imread
 from torch.utils.data import DataLoader, Dataset
+from models.segmentation.utils import apply_conv_transp_approx
 from tqdm import tqdm
 
 class BrainModelWrapper(TorchModelWrapper):
-    def load_model(self, eval=True):
+    def load_model(self, eval=True, approx_transpose_conv=True):
         self.model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
             in_channels=3, out_channels=1, init_features=32, pretrained=True)
+
+        if approx_transpose_conv:
+            apply_conv_transp_approx(self.model)
+
         if torch.cuda.is_available():
             self.model = self.model.cuda()
 
@@ -24,7 +29,7 @@ class BrainModelWrapper(TorchModelWrapper):
         # https://www.kaggle.com/datasets/mateuszbuda/lgg-mri-segmentation
 
         LGGMRI_PATH = os.environ.get("LGGMRI_PATH", os.path.expanduser("~/dataset/lgg-mri-segmentation/kaggle_3m"))
-    
+
         val_dataset = BrainSegmentationDataset(
             images_dir=LGGMRI_PATH,
             subset="validation",
@@ -36,7 +41,7 @@ class BrainModelWrapper(TorchModelWrapper):
             val_dataset, batch_size=batch_size, drop_last=False, num_workers=workers
         )
 
-        self.data_loaders['validate'] = val_loader  
+        self.data_loaders['validate'] = val_loader
         self.data_loaders['calibrate'] = val_loader # todo: support calibrate
 
     def inference(self, mode='validate'):
@@ -72,7 +77,7 @@ class BrainModelWrapper(TorchModelWrapper):
             loader.dataset.patients,
         )
 
-        
+
         dsc_dist = dsc_distribution(volumes)
         dsc_dist_plot = plot_dsc(dsc_dist)
         imsave(args.figure, dsc_dist_plot)
@@ -89,7 +94,7 @@ class BrainModelWrapper(TorchModelWrapper):
                 filepath = os.path.join(args.predictions, filename)
                 imsave(filepath, image)
         '''
-        
+
         mean_dsc = np.mean( dsc_per_volume(pred_list, true_list, loader.dataset.patient_slice_index) )
         print("Mean DSC:", mean_dsc)
         return mean_dsc

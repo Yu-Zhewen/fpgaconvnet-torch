@@ -51,6 +51,12 @@ bash scripts/run_quantization.sh
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | unet  | [mmsegmentation](https://github.com/open-mmlab/mmsegmentation) | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |
 
+### llgmri (val, Dice coefficient)
+| Model         | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|---------------|-------------------------------------------------|---------|---------|--------|--------------|----------------|
+| unet          | [brain-segmentation-pytorch](https://github.com/mateuszbuda/brain-segmentation-pytorch) | 90.89   | 90.88   | 80.98  | 90.95        | 90.85          |
+| unet-bilinear | [brain-segmentation-pytorch](https://github.com/mateuszbuda/brain-segmentation-pytorch) | 91.05   | 91.05   | 77.51  | 91.04        | 91.03          |
+
 ### ucf101 (val-split1, top-1 acc)
 | Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
