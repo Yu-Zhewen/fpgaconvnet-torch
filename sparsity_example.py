@@ -7,6 +7,7 @@ import torch
 
 from models import initialize_wrapper
 from quantization.utils import QuantMode, quantize_model
+from sparsity.prune_utils import apply_weight_pruning
 from sparsity.utils import measure_model_sparsity
 
 def main():
@@ -24,6 +25,9 @@ def main():
                         help='mini-batch size')
     parser.add_argument('--gpu', default=None, type=int,
                         help='GPU id to use.')
+
+    parser.add_argument('--weight_threshold', default=None, type=float,
+                        help='threshold for weight pruning')
 
     parser.add_argument('--output_path', default=None, type=str,
                         help='output path')                     
@@ -48,7 +52,15 @@ def main():
     quantize_model(model_wrapper, {'weight_width': 16, 'data_width': 16, 'mode': QuantMode.NETWORK_FP})
     top1, top5 = model_wrapper.inference("test")
 
-    # post-activation sparsity has zero impact on accuracy
+    if args.weight_threshold is None:
+        # post-activation sparsity has zero impact on accuracy
+        print("POST-ACTIVATION SPARSITY")
+    else:
+        # apply weight pruning
+        print("WEIGHT PRUNING")
+        apply_weight_pruning(model_wrapper, args.weight_threshold)
+        top1, top5 = model_wrapper.inference("test")
+
     # measure sparsity-related stats on calibration set
     measure_model_sparsity(model_wrapper)
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "sparse"))
