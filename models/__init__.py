@@ -4,7 +4,15 @@ import os
 def initialize_wrapper(dataset_name, model_name,
                        dataset_path, batch_size, workers):
     model_wrapper = None
-    if dataset_name == "imagenet":
+    if dataset_name == "cifar10":
+        os.environ['CIFAR_PATH'] = dataset_path
+        from models.classification.cifar import ChenyaofoModelWrapper
+        model_wrapper = ChenyaofoModelWrapper(model_name, num_classes=10)
+    elif dataset_name == "cifar100":
+        os.environ['CIFAR_PATH'] = dataset_path
+        from models.classification.cifar import ChenyaofoModelWrapper
+        model_wrapper = ChenyaofoModelWrapper(model_name, num_classes=100)
+    elif dataset_name == "imagenet":
         os.environ['IMAGENET_PATH'] = dataset_path
         if model_name in ["resnet18", "resnet50", "mobilenet_v2"]:
             from models.classification.imagenet import TorchvisionModelWrapper

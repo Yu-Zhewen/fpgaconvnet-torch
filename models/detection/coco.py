@@ -10,6 +10,7 @@ from models.base import TorchModelWrapper
 # note: do NOT move ultralytic import to the top, otherwise the edit in settings will not take effect
 
 class UltralyticsModelWrapper(TorchModelWrapper):
+    # https://github.com/ultralytics/ultralytics
 
     def load_model(self, eval=True):
         from ultralytics import YOLO 

@@ -9,6 +9,13 @@ from onnxsim import simplify
 
 
 class MmsegmentationModelWrapper(TorchModelWrapper):
+    # https://github.com/open-mmlab/mmsegmentation
+
+    def __init__(self, model_name, input_size=(1, 3, 512, 1024), num_classes=19):
+        self.input_size = input_size
+        self.num_classes = num_classes
+        super().__init__(model_name)
+
     def load_model(self, eval=True):
         assert self.model_name == 'unet'
         # todo: add mmseg as submodule?
@@ -48,13 +55,7 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
             print(results)
 
     def onnx_exporter(self, onnx_path):
-        # todo: support other input sizes
-        random_input = torch.randn(1, 3, 512, 1024)
-        if torch.cuda.is_available():
-            random_input = random_input.cuda()
-        torch.onnx.export(self, random_input, onnx_path,
-                          verbose=False, keep_initializers_as_inputs=True)
-
+        super().onnx_exporter(onnx_path)
         model = onnx.load(onnx_path)
         model_simp, check = simplify(model)
         onnx.save(model_simp, onnx_path)

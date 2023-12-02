@@ -10,6 +10,12 @@ from onnxsim import simplify
 
 
 class MmactionModelWrapper(TorchModelWrapper):
+    # https://github.com/open-mmlab/mmaction
+
+    def __init__(self, model_name, input_size=(1, 1, 3, 16, 256, 256), num_classes=101):
+        self.input_size = input_size
+        self.num_classes = num_classes
+        super().__init__(model_name)
 
     def load_model(self, val=True):
         assert self.model_name in ["x3d_s", "x3d_m"]
@@ -68,13 +74,7 @@ class MmactionModelWrapper(TorchModelWrapper):
             print(results)
 
     def onnx_exporter(self, onnx_path):
-        # todo: support other input sizes
-        random_input = torch.randn(1, 1, 3, 16, 256, 256)
-        if torch.cuda.is_available():
-            random_input = random_input.cuda()
-        torch.onnx.export(self.model, random_input, onnx_path,
-                          verbose=False, keep_initializers_as_inputs=True)
-
+        super().onnx_exporter(onnx_path)
         model = onnx.load(onnx_path)
         model_simp, check = simplify(model)
         onnx.save(model_simp, onnx_path)
