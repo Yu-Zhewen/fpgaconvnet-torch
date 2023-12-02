@@ -21,7 +21,7 @@ python threshold_relu_example.py
 * `camvid`: `unet`
 * `cityscapes`: `unet`
 
-## Quantization Results
+## Quantization Results (part I)
 @ commit ec09e56
 ```
 bash scripts/run_quantization.sh
@@ -51,6 +51,8 @@ bash scripts/run_quantization.sh
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | unet  | [mmsegmentation](https://github.com/open-mmlab/mmsegmentation) | 69.10   | 69.10   | 1.98   | 61.74        | 68.43          |
 
+## Quantization Results (part II)
+
 ### llgmri (val, Dice coefficient)
 | Model         | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |---------------|-------------------------------------------------|---------|---------|--------|--------------|----------------|
@@ -62,6 +64,10 @@ bash scripts/run_quantization.sh
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | x3d_s  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 93.68  | 93.57   |  1.13   | 90.21  | 93.57   |
 | x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 96.40  | 96.40   |  0.81   | 95.24  | 96.29   |
+
+
+## Sparsity Results
+
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo

@@ -26,7 +26,7 @@ def main():
     parser.add_argument('--gpu', default=None, type=int,
                         help='GPU id to use.')
 
-    parser.add_argument('--weight_threshold', default=None, type=float,
+    parser.add_argument('--weight_threshold', default=0.005, type=float,
                         help='threshold for weight pruning')
 
     parser.add_argument('--output_path', default=None, type=str,
@@ -62,8 +62,9 @@ def main():
         top1, top5 = model_wrapper.inference("test")
 
     # measure sparsity-related stats on calibration set
-    measure_model_sparsity(model_wrapper)
+    avg_sparsity = measure_model_sparsity(model_wrapper)
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "sparse"))
+    print(f"Average sparsity: {avg_sparsity}")
 
 if __name__ == '__main__':
     main()
