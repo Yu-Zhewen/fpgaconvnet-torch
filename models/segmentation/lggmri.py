@@ -14,6 +14,13 @@ from models.segmentation.utils import apply_conv_transp_approx
 from tqdm import tqdm
 
 class BrainModelWrapper(TorchModelWrapper):
+    # https://github.com/mateuszbuda/brain-segmentation-pytorch
+
+    def __init__(self, model_name, input_size=(1, 3, 256, 256), num_classes=2):
+        self.input_size = input_size
+        self.num_classes = num_classes
+        super().__init__(model_name)
+
     def load_model(self, eval=True, approx_transpose_conv=True):
         self.model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
             in_channels=3, out_channels=1, init_features=32, pretrained=True)
@@ -99,11 +106,6 @@ class BrainModelWrapper(TorchModelWrapper):
         print("Mean DSC:", mean_dsc)
         return mean_dsc
 
-    def onnx_exporter(self, onnx_path):
-        random_input = torch.randn(1,3,256,256) # todo: support other input sizes
-        if torch.cuda.is_available():
-            random_input = random_input.cuda()
-        torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
 
 def dsc(y_pred, y_true, lcc=True):
     if lcc and np.any(y_pred):

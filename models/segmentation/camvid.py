@@ -14,6 +14,8 @@ from torch.utils import data
 
 
 class NncfModelWrapper(TorchModelWrapper):
+    # https://github.com/openvinotoolkit/nncf
+
     def __init__(self, model_name, input_size=(1, 3, 368, 480), num_classes=12):
         self.input_size = input_size
         self.num_classes = num_classes
@@ -100,12 +102,7 @@ class NncfModelWrapper(TorchModelWrapper):
         mIOU = metric.value()[1]
         print("mIOU: ", mIOU)
         return mIOU
-
-    def onnx_exporter(self, onnx_path):
-        random_input = torch.randn(1,3,368,480) # todo: support other input sizes
-        if torch.cuda.is_available():
-            random_input = random_input.cuda()
-        torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
+        
 
 def cat_list(images, fill_value=0):
     max_size = tuple(max(s) for s in zip(*[img.shape for img in images]))

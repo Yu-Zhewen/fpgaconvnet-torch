@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 from abc import ABC, abstractmethod
 
@@ -21,9 +22,11 @@ class TorchModelWrapper(nn.Module, ABC):
     def inference(self):
         pass
 
-    @abstractmethod
-    def onnx_exporter(self):
-        pass
+    def onnx_exporter(self, onnx_path):
+        random_input = torch.randn(self.input_size)
+        if torch.cuda.is_available():
+            random_input = random_input.cuda()
+        torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
 
     def forward(self, x):
         return self.model(x)

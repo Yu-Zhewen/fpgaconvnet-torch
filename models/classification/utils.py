@@ -1,3 +1,4 @@
+import random
 import time
 import torch
 
@@ -183,3 +184,20 @@ class BottleneckReluFixed(nn.Module):
         out = self.relu3(out)
 
         return out
+
+def get_train_subset_indices(train_labels, subset_size, num_classes):
+    if subset_size % num_classes == 0:
+        # M-class-N-shot few sample
+        rand_indices = torch.randperm(len(train_labels)).tolist()
+        per_class_remain = [subset_size // num_classes] * num_classes
+        calib_indices = []
+        for idx in rand_indices:
+            label = train_labels[idx]
+            if per_class_remain[label] > 0:
+                calib_indices.append(idx)
+                per_class_remain[label] -= 1
+    else:
+        # random split
+        rand_indices = torch.randperm(len(train_dataset)).tolist()
+        calib_indices = random.choices(rand_indices, k=subset_size)
+    return calib_indices
