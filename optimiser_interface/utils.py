@@ -20,7 +20,7 @@ def opt_cli_launcher(model_name, onnx_path, output_dir,
                     opt_obj='throughput', opt_solver='greedy_partition', opt_cfg="single_partition_throughput"):
 
     platform_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER'], f'examples/platforms/{device}.toml')
-    opt_cfg_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER'], f'examples/{opt_cfg}.toml')
+    opt_cfg_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER'], f'examples/optimisers/{opt_cfg}.toml')
     saved_argv = sys.argv
     sys.argv  = ['cli.py']
     sys.argv += ['--name', model_name]

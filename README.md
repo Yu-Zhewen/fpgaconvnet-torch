@@ -21,11 +21,7 @@ python threshold_relu_example.py
 * `camvid`: `unet`
 * `cityscapes`: `unet`
 
-## Quantization Results
-@ commit ec09e56
-```
-bash scripts/run_quantization.sh
-```
+## Quantization Results 
 
 ### imagenet (val, top-1 acc)
 | Model        | Source                                                      | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
@@ -62,6 +58,23 @@ bash scripts/run_quantization.sh
 |-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
 | x3d_s  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 93.68  | 93.57   |  1.13   | 90.21  | 93.57   |
 | x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 96.40  | 96.40   |  0.81   | 95.24  | 96.29   |
+
+
+## Sparsity Results
+* Q - Fixed16 Quantization
+* AS - Activation Sparsity
+* WS - Weight Sparsity (applying global pruning threshold)
+* Post-training, without fine-tuning
+
+### imagenet
+
+| Model    | Experiment     | Accuracy | Sparsity |
+|----------|----------------|----------|----------|
+| resnet18 | Q+AS           | 69.74    | 50.75    |
+| resnet18 | Q+AS+WS(0.005) | 69.42    | 56.33    |
+| resnet18 | Q+AS+WS(0.010) | 67.36    | 61.47    |
+| resnet18 | Q+AS+WS(0.015) | 58.38    | 65.91    |
+| resnet18 | Q+AS+WS(0.020) | 27.91    | 69.63    |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
