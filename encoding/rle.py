@@ -47,6 +47,7 @@ def encode_model(model_wrapper, l_bits):
     weight_width = model_wrapper.sideband_info["quantization"]["weight_width"]
     data_width = model_wrapper.sideband_info["quantization"]["data_width"]
 
+    encode_info = {}
     for name, module in model_wrapper.named_modules():
         if isinstance(module, WEIGHT_QUANT_MODULES):
             assert name.endswith(".1")
@@ -54,4 +55,8 @@ def encode_model(model_wrapper, l_bits):
             scale = model_wrapper.sideband_info["quantization"][name]["weight_scale"]
             zero_point = model_wrapper.sideband_info["quantization"][name]["weight_zero_point"]
             encoded_weight = encode(module.weight.data, weight_width, scale, zero_point, l_bits)
-            print(name, "weight compression ratio:", get_compression_ratio(module.weight.data, encoded_weight, weight_width, l_bits))
+            ratio = get_compression_ratio(module.weight.data, encoded_weight, weight_width, l_bits)
+            encode_info[name] = {"weight_compression_ratio": ratio}
+
+    print(encode_info)
+    model_wrapper.sideband_info["encoding"] = encode_info
