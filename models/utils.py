@@ -83,6 +83,54 @@ def _annotate_sparsity(onnx_model, sideband_info):
             histograms_data = histograms_data/histograms_data.sum(axis = 1, keepdims=True) # normalize
             set_nodeattr(node, "channel_sparsity_hist", histograms_data.flatten())
 
+def find_producer(onnx_graph, tensor_name):
+    """Finds and returns the node that produces the tensor with given name, in onnx graph."""
+    for x in onnx_graph.node:
+        if tensor_name in x.output:
+            return x
+    return None
+
+def find_consumers(onnx_graph, tensor_name):
+    """Finds and returns a list of the nodes that consume tensor with given name, in onnx graph"""
+    consumers = []
+    for n in onnx_graph.node:
+        for inp_tensor in n.input:
+            if inp_tensor == tensor_name:
+                consumers.append(n)
+    return consumers
+
+def _annotate_encoding(onnx_model, sideband_info):
+    if "encoding" not in sideband_info:
+        return
+    info = sideband_info["encoding"]
+    for node in onnx_model.graph.node:
+        layer_name = onnx_to_torch_name_cast(node.name, node.op_type)
+        if layer_name in info.keys():
+            set_nodeattr(node, "input_compression_ratio", [info[layer_name]["input_compression_ratio"]])
+            set_nodeattr(node, "output_compression_ratio", [info[layer_name]["output_compression_ratio"]])
+            if node.op_type in ["Conv", "Gemm"]:
+                set_nodeattr(node, "weight_compression_ratio", [info[layer_name]["weight_compression_ratio"]])
+        else:
+            if node.op_type == 'Constant':
+                continue
+            inputs = node.input
+            outputs = node.output
+            if node.op_type == 'Resize':
+                inputs = [node.input[0]]
+            input_compression_ratio = []
+            for input_name in inputs:
+                p_node = find_producer(onnx_model.graph, input_name)
+                p_name = onnx_to_torch_name_cast(p_node.name, p_node.op_type)
+                input_compression_ratio.append(info[p_name]["output_compression_ratio"])
+            set_nodeattr(node, "input_compression_ratio", input_compression_ratio)
+            output_compression_ratio = []
+            for output_name in outputs:
+                c_node = find_consumers(onnx_model.graph, output_name)[0]
+                c_name = onnx_to_torch_name_cast(c_node.name, c_node.op_type)
+                output_compression_ratio.append(info[c_name]["input_compression_ratio"])
+            set_nodeattr(node, "output_compression_ratio", output_compression_ratio)
+                
+
 def generate_onnx_files(self, output_path):
     model_copy = copy.deepcopy(self.model)
     self.load_model() # load f32 model
@@ -106,6 +154,7 @@ def generate_onnx_files(self, output_path):
         _insert_threshold_relu(onnx_model, self.sideband_info)
         _annotate_quantization(onnx_model, self.sideband_info)
         _annotate_sparsity(onnx_model, self.sideband_info)
+        _annotate_encoding(onnx_model, self.sideband_info)
         fpgaconvnet_onnx_path = os.path.join(output_path, f"{self.model_name}.onnx")
         onnx.save(onnx_model, fpgaconvnet_onnx_path)
     else:

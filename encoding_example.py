@@ -49,7 +49,7 @@ def main():
 
     # encoding
     encode_model(model_wrapper, 8)
-
+    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "encode"))
 
 
 if __name__ == '__main__':

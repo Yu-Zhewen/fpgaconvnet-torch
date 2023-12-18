@@ -88,5 +88,4 @@ def encode_model(model_wrapper, l_bits):
             else:
                 assert False, "unexpected module name"
 
-    print(encode_info)
     model_wrapper.sideband_info["encoding"] = encode_info
