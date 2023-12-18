@@ -33,7 +33,8 @@ def initialize_wrapper(dataset_name, model_name,
     elif dataset_name == "cityscapes":
         os.environ['CITYSCAPES_PATH'] = dataset_path
         if model_name in ["unet"]:
-            from models.segmentation.cityscapes import MmsegmentationModelWrapper
+            from models.segmentation.cityscapes import \
+                MmsegmentationModelWrapper
             model_wrapper = MmsegmentationModelWrapper(model_name)
     elif dataset_name == "lggmri":
         os.environ['LGGMRI_PATH'] = dataset_path
@@ -45,6 +46,11 @@ def initialize_wrapper(dataset_name, model_name,
         if model_name in ["x3d_s", "x3d_m"]:
             from models.action_recognition.ucf101 import MmactionModelWrapper
             model_wrapper = MmactionModelWrapper(model_name)
+    elif dataset_name == "brats2020":
+        os.environ['BRATS2020_PATH'] = dataset_path
+        if model_name in ["unet3d"]:
+            from models.segmentation.brats2020 import Unet3DKaggleModelWrapper
+            model_wrapper = Unet3DKaggleModelWrapper(model_name)
 
     if model_wrapper is None:
         raise NotImplementedError("Unknown dataset/model combination")
