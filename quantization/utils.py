@@ -11,7 +11,6 @@ class QuantMode(Enum):
     LAYER_BFP = 2
     CHANNEL_BFP = 3
 
-# todo: support 3D layers
 ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear, nn.ConvTranspose2d, nn.ConvTranspose3d, nn.ReLU, nn.ReLU6, nn.MaxPool2d, nn.MaxPool3d, nn.AdaptiveAvgPool2d, nn.AdaptiveAvgPool3d, nn.AvgPool2d, nn.AvgPool3d)
 WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear, nn.ConvTranspose2d, nn.ConvTranspose3d)
 
@@ -95,7 +94,7 @@ class ModelParamQuantizer():
         w_quant = linear_quantize(w, scaling_factor, zero_point)
         w_quant = saturate(w_quant, word_length)
         w_approx = linear_dequantize(w_quant, scaling_factor, zero_point)
-        return w_approx
+        return w_approx, scaling_factor, zero_point
 
 class QuantAct(nn.Module):
     def __init__(self,
@@ -150,11 +149,13 @@ class ModelActQuantizer():
 
     def apply(self, word_length, mode):
         # add activation quantisation module
-        replace_dict ={}
-        for module in self.model_wrapper.modules():
+        replace_dict = {}
+        name_list = []
+        for name, module in self.model_wrapper.named_modules():
             if isinstance(module, ACTIVA_QUANT_MODULES):
                 module_quant = nn.Sequential(*[QuantAct(word_length, mode), copy.deepcopy(module), QuantAct(word_length, mode)])
                 replace_dict[module] = module_quant
+                name_list.append(name)
         self.model_wrapper.replace_modules(replace_dict)
         if torch.cuda.is_available():
             self.model_wrapper.cuda()
@@ -164,7 +165,6 @@ class ModelActQuantizer():
         for name, module in self.model_wrapper.named_modules():
             if isinstance(module, QuantAct):
                 module.calibrate = False
-
         act_min = torch.tensor(float('inf'))
         act_max = torch.tensor(float('-inf'))
         if torch.cuda.is_available():
@@ -176,12 +176,29 @@ class ModelActQuantizer():
                 act_max = torch.maximum(torch.max(module.x_max), act_max)
         print("activation min:", act_min)
         print("activation max:", act_max)
-        for module in self.model_wrapper.modules():
-            if isinstance(module, QuantAct):
-                if mode == QuantMode.NETWORK_FP:
-                    module.x_min = act_min
-                    module.x_max = act_max
-                module.get_scale_shift()
+        
+        # set scale and shift
+        for i, seq in enumerate(replace_dict.values()):
+            assert isinstance(seq, nn.Sequential)
+            input_quant = seq[0]
+            output_quant = seq[2]
+            if mode == QuantMode.NETWORK_FP:
+                input_quant.x_min = act_min
+                input_quant.x_max = act_max
+                output_quant.x_min = act_min
+                output_quant.x_max = act_max
+            input_quant.get_scale_shift()
+            output_quant.get_scale_shift()
+            
+            # save to info
+            name = name_list[i]
+            if name not in self.model_wrapper.sideband_info['quantization']:
+                self.model_wrapper.sideband_info['quantization'][name] = {}
+            self.model_wrapper.sideband_info['quantization'][name]["input_scale"] = input_quant.scaling_factor
+            self.model_wrapper.sideband_info['quantization'][name]["input_zero_point"] = input_quant.zero_point
+            self.model_wrapper.sideband_info['quantization'][name]["output_scale"] = output_quant.scaling_factor
+            self.model_wrapper.sideband_info['quantization'][name]["output_zero_point"] = output_quant.zero_point
+
 
 def quantize_model(model_wrapper, info):
     model_wrapper.sideband_info['quantization'] = info
@@ -192,10 +209,14 @@ def quantize_model(model_wrapper, info):
                 weight = module.weight.data.transpose(0, 1)
             else:
                 weight = module.weight.data
-            quantized_weight = weight_quantizer.apply(weight, info["weight_width"], info["mode"])
+            
+            quantized_weight, w_scale, w_zero_point = weight_quantizer.apply(weight, info["weight_width"], info["mode"])
+            model_wrapper.sideband_info['quantization'][name] = {"weight_scale": w_scale, "weight_zero_point": w_zero_point}
+
             if isinstance(module, nn.ConvTranspose2d):
                 module.weight.data.copy_(quantized_weight.transpose(0, 1))
             else:
                 module.weight.data.copy_(quantized_weight)
+    
     activation_quantizer = ModelActQuantizer(model_wrapper)
     activation_quantizer.apply(info["data_width"], info["mode"])
