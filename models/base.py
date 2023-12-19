@@ -1,6 +1,8 @@
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
-from abc import ABC, abstractmethod
+
 
 class TorchModelWrapper(nn.Module, ABC):
     def __init__(self, model_name):

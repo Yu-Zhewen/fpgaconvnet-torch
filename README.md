@@ -20,8 +20,11 @@ python threshold_relu_example.py
 * `coco`: `yolov8n`
 * `camvid`: `unet`
 * `cityscapes`: `unet`
+* `llgmri`: `unet`
+* `ucf101`: `x3d_s`, `x3d_m`
+* `brats20`: `unet3d`
 
-## Quantization Results 
+## Quantization Results
 
 ### imagenet (val, top-1 acc)
 | Model        | Source                                                      | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
