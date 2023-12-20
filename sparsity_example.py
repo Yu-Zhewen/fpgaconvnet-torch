@@ -35,7 +35,8 @@ def main():
 
     args = parser.parse_args()
     if args.output_path == None:
-        args.output_path = os.getcwd() + "/output"
+        args.output_path = os.path.join(os.getcwd(), 
+         f"output/{args.dataset_name}/{args.model_name}")
     pathlib.Path(args.output_path).mkdir(parents=True, exist_ok=True)
     print(args)
 

@@ -1,4 +1,6 @@
 import torch
+
+import numpy as np
 import torch.nn as nn
 
 from models.classification.utils import AverageMeter
@@ -13,6 +15,10 @@ def get_compression_ratio(x, encoded_x, x_bits, l_bits):
     return (len(encoded_x) * (x_bits + l_bits)) / (len(x.flatten()) * x_bits)
 
 def encode(x, word_length, scaling_factor, zero_point, l_bits, transpose=False):
+    if torch.cuda.is_available():
+        x = x.cuda()
+        scaling_factor = scaling_factor.cuda()
+        zero_point = zero_point.cuda()
     # convert to quantized int representation
     if transpose:
         x = x.transpose(0, 1)
@@ -89,3 +95,9 @@ def encode_model(model_wrapper, l_bits):
                 assert False, "unexpected module name"
 
     model_wrapper.sideband_info["encoding"] = encode_info
+    
+    compression_ratio = []
+    for v in encode_info.values():
+        compression_ratio += list(v.values())
+    compression_ratio = np.mean(compression_ratio)
+    return compression_ratio

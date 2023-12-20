@@ -5,6 +5,7 @@ import yaml
 
 import numpy as np
 import onnx_graphsurgeon as gs
+import torch.nn as nn
 
 from models.base import TorchModelWrapper
 # note: do NOT move ultralytic import to the top, otherwise the edit in settings will not take effect
@@ -16,15 +17,19 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         from ultralytics import YOLO 
         self.yolo = YOLO(self.model_name)
         self.model = self.yolo.model
-        #if torch.cuda.is_available():
-        #    self.model = self.model.cuda()
+        self.model_fixer()
 
-        # utlralytics conv bn fusion is currently not working for compressed model
-        # disbale it for now
+        # utlralytics conv bn fusion not working after compression, disable it
         def _fuse(verbose=True):
             return self.model
         self.model.fuse = _fuse
 
+    def model_fixer(self):
+        from ultralytics.nn.modules import Conv
+        for name, module in self.named_modules():
+            if isinstance(module, Conv) and isinstance(module.act, nn.SiLU):
+                module.act = nn.Hardswish(inplace=True)
+                
     def load_data(self, batch_size, workers):
         from ultralytics import settings
 
@@ -52,6 +57,16 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         path = self.yolo.export(format="onnx", simplify=True)
         os.rename(path, onnx_path)
         self.remove_detection_head_v8(onnx_path)
+
+        # rename sideband info
+        for method, info in self.sideband_info.items():
+            new_info = {}
+            for k, v in info.items():
+                if k.startswith("yolo.model."):
+                    new_info[k.replace("yolo.model.", "")] = v
+                else:
+                    new_info[k] = v
+            self.sideband_info[method] = new_info
 
     def remove_detection_head_v8(self, onnx_path):
         graph = onnx.load(onnx_path)

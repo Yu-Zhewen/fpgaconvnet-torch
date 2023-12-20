@@ -115,19 +115,32 @@ def _annotate_encoding(onnx_model, sideband_info):
                 continue
             inputs = node.input
             outputs = node.output
-            if node.op_type == 'Resize':
+            if node.op_type in ['Resize', 'Split']:
                 inputs = [node.input[0]]
             input_compression_ratio = []
             for input_name in inputs:
                 p_node = find_producer(onnx_model.graph, input_name)
+                if p_node == None:
+                    input_compression_ratio.append(1.0) # todo: fix missing info
+                    continue
                 p_name = onnx_to_torch_name_cast(p_node.name, p_node.op_type)
-                input_compression_ratio.append(info[p_name]["output_compression_ratio"])
+                if p_name in info.keys():
+                    input_compression_ratio.append(info[p_name]["output_compression_ratio"])
+                else:
+                    input_compression_ratio.append(1.0) # todo: fix missing info
             set_nodeattr(node, "input_compression_ratio", input_compression_ratio)
             output_compression_ratio = []
             for output_name in outputs:
-                c_node = find_consumers(onnx_model.graph, output_name)[0]
+                c_node = find_consumers(onnx_model.graph, output_name)
+                if len(c_node) == 0:
+                    output_compression_ratio.append(1.0) # todo: fix missing info
+                    continue
+                c_node = c_node[0]
                 c_name = onnx_to_torch_name_cast(c_node.name, c_node.op_type)
-                output_compression_ratio.append(info[c_name]["input_compression_ratio"])
+                if c_name in info.keys():
+                    output_compression_ratio.append(info[c_name]["input_compression_ratio"])
+                else:
+                    output_compression_ratio.append(1.0) # todo: fix missing info
             set_nodeattr(node, "output_compression_ratio", output_compression_ratio)
                 
 

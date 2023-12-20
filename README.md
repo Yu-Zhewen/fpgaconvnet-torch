@@ -69,8 +69,6 @@ python threshold_relu_example.py
 * WS - Weight Sparsity (applying global pruning threshold)
 * Post-training, without fine-tuning
 
-### imagenet
-
 | Model    | Experiment     | Accuracy | Sparsity |
 |----------|----------------|----------|----------|
 | resnet18 | Q+AS           | 69.74    | 50.75    |
@@ -78,6 +76,17 @@ python threshold_relu_example.py
 | resnet18 | Q+AS+WS(0.010) | 67.36    | 61.47    |
 | resnet18 | Q+AS+WS(0.015) | 58.38    | 65.91    |
 | resnet18 | Q+AS+WS(0.020) | 27.91    | 69.63    |
+
+## Encoding Results
+* BFP8 (Channel) Quantization
+* RLE-8, run-length encoding, use 8 bits for encoding (max length 2^8)
+* Compression Ratio, average over all weights and activations
+
+| Dataset    | Model                | Experiment | Compression Ratio |
+|------------|----------------------|------------|-------------------|
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753             |
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175             |
+| cityscapes | unet (onnx)          | RLE-8      |                   |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo

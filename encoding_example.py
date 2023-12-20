@@ -29,7 +29,8 @@ def main():
 
     args = parser.parse_args()
     if args.output_path == None:
-        args.output_path = os.getcwd() + "/output"
+        args.output_path = os.path.join(os.getcwd(), 
+         f"output/{args.dataset_name}/{args.model_name}")
     pathlib.Path(args.output_path).mkdir(parents=True, exist_ok=True)
     print(args)
 
@@ -48,7 +49,8 @@ def main():
                    'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
 
     # encoding
-    encode_model(model_wrapper, 8)
+    ratio = encode_model(model_wrapper, 8)
+    print("Encoding ratio: ", ratio)
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "encode"))
 
 
