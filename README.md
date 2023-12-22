@@ -87,6 +87,9 @@ python threshold_relu_example.py
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753             |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175             |
 | cityscapes | unet (onnx)          | RLE-8      |                   |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1ghj2Da4HdkHSC-ADSe-JwvQbtwhUT_vT/view?usp=sharing))       | Huffman      | 0.821            |
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman     | 0.684            |
+| cityscapes | unet (onnx)          | Huffman      |                   |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo

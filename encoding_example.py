@@ -4,7 +4,8 @@ import pathlib
 import random
 import torch
 
-from encoding.rle import encode_model
+from encoding.huffman import huffman_model
+from encoding.rle import rle_model
 from models import initialize_wrapper
 from quantization.utils import QuantMode, quantize_model
 
@@ -49,10 +50,15 @@ def main():
                    'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
 
     # encoding
-    ratio = encode_model(model_wrapper, 8)
-    print("Encoding ratio: ", ratio)
-    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "encode"))
+    #print("Encoding model in RLE...")
+    #ratio = rle_model(model_wrapper, 8)
+    #print("compression ratio: ", ratio)
+    #model_wrapper.generate_onnx_files(os.path.join(args.output_path, "rle"))
 
+    print("Encoding model in Huffman...")
+    ratio = huffman_model(model_wrapper)
+    print("compression ratio: ", ratio)
+    model_wrapper.generate_onnx_files(os.path.join(args.output_path, "huffman"))
 
 if __name__ == '__main__':
     main()

@@ -20,7 +20,7 @@ ACTIVA_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear,
 WEIGHT_QUANT_MODULES = (nn.Conv2d, nn.Conv3d, nn.Linear, 
                         nn.ConvTranspose2d, nn.ConvTranspose3d)
 
-def linear_quantize(x, scaling_factor, zero_point):
+def linear_quantize(x, word_length, scaling_factor, zero_point):
     if len(x.shape) == 5:
         scaling_factor = scaling_factor.view(-1, 1, 1, 1, 1)
         zero_point = zero_point.view(-1, 1, 1, 1, 1)
@@ -33,6 +33,7 @@ def linear_quantize(x, scaling_factor, zero_point):
     else:
         assert False
     x_quant = torch.round(scaling_factor * x - zero_point)
+    x_quant = saturate(x_quant, word_length)
     return x_quant
 
 def linear_dequantize(x_quant, scaling_factor, zero_point):
@@ -97,8 +98,7 @@ class ModelParamQuantizer():
             w_min = w_min.to(w.device)
             w_max = w_max.to(w.device)
         scaling_factor, zero_point = asymmetric_linear_no_clipping(word_length, w_min, w_max)
-        w_quant = linear_quantize(w, scaling_factor, zero_point)
-        w_quant = saturate(w_quant, word_length)
+        w_quant = linear_quantize(w, word_length, scaling_factor, zero_point)
         w_approx = linear_dequantize(w_quant, scaling_factor, zero_point)
         return w_approx, scaling_factor, zero_point
 
@@ -142,8 +142,7 @@ class QuantAct(nn.Module):
         else:
             if self.mode == QuantMode.CHANNEL_BFP:
                 x = x.transpose(0, 1)
-            x_quant = linear_quantize(x, self.scaling_factor, self.zero_point)
-            x_quant = saturate(x_quant, self.word_length)
+            x_quant = linear_quantize(x, self.word_length, self.scaling_factor, self.zero_point)
             x_quant = linear_dequantize(x_quant, self.scaling_factor, self.zero_point)
             if self.mode == QuantMode.CHANNEL_BFP:
                 x_quant = x_quant.transpose(0, 1)
