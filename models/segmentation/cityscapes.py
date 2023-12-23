@@ -40,6 +40,9 @@ class MmsegmentationModelWrapper(TorchModelWrapper):
             'state_dict']
         self.model.load_state_dict(state_dict)
 
+        # todo: fix torch onnx naming issue in decode head
+        self.model.auxiliary_head = None
+
     def load_data(self, batch_size, workers):  # todo: fix this
         # let the runner handle the data loading
         # todo: download cityscapes dataset

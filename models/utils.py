@@ -23,7 +23,7 @@ def onnx_to_torch_name_cast(onnx_name, onnx_type, sep="/"):
     onnx_name = [name for name in onnx_name if name != ""]
     buffer = [onnx_name[0]]
     for i in range(1, len(onnx_name)):
-        if buffer[-1] in onnx_name[i]:
+        if onnx_name[i].startswith(buffer[-1]):
             buffer[-1] = onnx_name[i]
         else:
             buffer.append(onnx_name[i])
