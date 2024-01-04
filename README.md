@@ -99,7 +99,7 @@ python threshold_relu_example.py
 | cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman      | 0.692             |
 | ucf101 | x3d_s ([onnx](https://drive.google.com/file/d/19c6jwuHZVcfZXPpXMaGmaK9AsRXPO5lJ/view?usp=sharing))          | Huffman      | 0.835       |
 | ucf101 | x3d_m ([onnx](https://drive.google.com/file/d/1RQr0lEuROwO14F0WtObBUmuz8Na3Vci2/view?usp=sharing))          | Huffman      | 0.833       |
-| brats2020 | unet3d ([onnx]())          | Huffman      | -      |
+| brats2020 | unet3d ([onnx]())          | Huffman      | 0.718      |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
