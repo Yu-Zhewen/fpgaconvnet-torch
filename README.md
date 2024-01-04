@@ -22,7 +22,7 @@ python threshold_relu_example.py
 * `cityscapes`: `unet`
 * `llgmri`: `unet`
 * `ucf101`: `x3d_s`, `x3d_m`
-* `brats20`: `unet3d`
+* `brats2020`: `unet3d`
 
 ## Quantization Results
 
@@ -62,6 +62,10 @@ python threshold_relu_example.py
 | x3d_s  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 93.68  | 93.57   |  1.13   | 90.21  | 93.57   |
 | x3d_m  | [mmaction2](https://github.com/open-mmlab/mmaction2) | 96.40  | 96.40   |  0.81   | 95.24  | 96.29   |
 
+### brats2020 (val, Dice coefficient)
+| Model | Source                                                         | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
+|-------|----------------------------------------------------------------|---------|---------|--------|--------------|----------------|
+| unet3d  | [BraTS20_3dUnet_3dAutoEncoder](https://www.kaggle.com/code/polomarco/brats20-3dunet-3dautoencoder) | 85.34  |  85.23  |  1.15   |  85.14  |  85.34   |
 
 ## Sparsity Results
 * Q - Fixed16 Quantization
@@ -87,9 +91,15 @@ python threshold_relu_example.py
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753             |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175             |
 | cityscapes | unet (onnx)          | RLE-8      | GPU TIMEOUT       |
+| ucf101 | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))          | RLE-8      | 1.737      |
+| ucf101 | x3d_m ([onnx]())          | RLE-8      | -      |
+| brats2020 | unet3d ([onnx]())          | RLE-8      | -      |
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1ghj2Da4HdkHSC-ADSe-JwvQbtwhUT_vT/view?usp=sharing))       | Huffman      | 0.821            |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman     | 0.684            |
 | cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman      | 0.692             |
+| ucf101 | x3d_s ([onnx](https://drive.google.com/file/d/19c6jwuHZVcfZXPpXMaGmaK9AsRXPO5lJ/view?usp=sharing))          | Huffman      | 0.835       |
+| ucf101 | x3d_m ([onnx](https://drive.google.com/file/d/1RQr0lEuROwO14F0WtObBUmuz8Na3Vci2/view?usp=sharing))          | Huffman      | 0.833       |
+| brats2020 | unet3d ([onnx]())          | Huffman      | -      |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
