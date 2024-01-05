@@ -86,20 +86,20 @@ python threshold_relu_example.py
 * RLE-8, run-length encoding, use 8 bits for encoding (max length 2^8)
 * Compression Ratio, average over all weights and activations
 
-| Dataset    | Model                | Experiment | Compression Ratio |
+| Dataset    | Model                | Experiment | Avg Compression Ratio |
 |------------|----------------------|------------|-------------------|
-| coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753             |
-| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175             |
-| cityscapes | unet (onnx)          | RLE-8      | GPU TIMEOUT       |
-| ucf101 | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))          | RLE-8      | 1.737      |
-| ucf101 | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))          | RLE-8      | 1.721      |
-| brats2020 | unet3d (onnx)          | RLE-8      | -      |
-| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1ghj2Da4HdkHSC-ADSe-JwvQbtwhUT_vT/view?usp=sharing))       | Huffman      | 0.821            |
-| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman     | 0.684            |
-| cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman      | 0.692             |
-| ucf101 | x3d_s ([onnx](https://drive.google.com/file/d/19c6jwuHZVcfZXPpXMaGmaK9AsRXPO5lJ/view?usp=sharing))          | Huffman      | 0.835       |
-| ucf101 | x3d_m ([onnx](https://drive.google.com/file/d/1RQr0lEuROwO14F0WtObBUmuz8Na3Vci2/view?usp=sharing))          | Huffman      | 0.833       |
-| brats2020 | unet3d (onnx)          | Huffman      | -      |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753       |
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175       |
+| cityscapes | unet (onnx)                                                                                                | RLE-8      | GPU TIMEOUT |
+| ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))         | RLE-8      | 1.737       |
+| ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))         | RLE-8      | 1.721       |
+| brats2020  | unet3d (onnx)                                                                                              | RLE-8      | TBA         |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1ghj2Da4HdkHSC-ADSe-JwvQbtwhUT_vT/view?usp=sharing))       | Huffman    | 0.821       |
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman    | 0.684       |
+| cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman    | 0.692       |
+| ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/19c6jwuHZVcfZXPpXMaGmaK9AsRXPO5lJ/view?usp=sharing))         | Huffman    | 0.835       |
+| ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1RQr0lEuROwO14F0WtObBUmuz8Na3Vci2/view?usp=sharing))         | Huffman    | 0.833       |
+| brats2020  | unet3d (onnx)                                                                                              | Huffman    | TBA         |
 
 ## Links to other repos
 * Optimizer: https://github.com/AlexMontgomerie/fpgaconvnet-optimiser; https://github.com/AlexMontgomerie/samo
