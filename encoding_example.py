@@ -2,12 +2,15 @@ import argparse
 import os
 import pathlib
 import random
+from statistics import mean
+
 import torch
 
 from encoding.huffman import huffman_model
 from encoding.rle import rle_model
 from models import initialize_wrapper
 from quantization.utils import QuantMode, quantize_model
+
 
 def main():
     parser = argparse.ArgumentParser(description='Quantization Example')
@@ -30,7 +33,7 @@ def main():
 
     args = parser.parse_args()
     if args.output_path == None:
-        args.output_path = os.path.join(os.getcwd(), 
+        args.output_path = os.path.join(os.getcwd(),
          f"output/{args.dataset_name}/{args.model_name}")
     pathlib.Path(args.output_path).mkdir(parents=True, exist_ok=True)
     print(args)
@@ -50,14 +53,20 @@ def main():
                    'weight_width': 8, 'data_width': 8, 'mode': QuantMode.CHANNEL_BFP})
 
     # encoding
-    #print("Encoding model in RLE...")
-    #ratio = rle_model(model_wrapper, 8)
-    #print("compression ratio: ", ratio)
-    #model_wrapper.generate_onnx_files(os.path.join(args.output_path, "rle"))
+    # print("Encoding model in RLE...")
+    # ratio, ratio_detailed = rle_model(model_wrapper, 8)
+    # print("compression ratio: ", ratio)
+    # for k, v in ratio_detailed.items():
+    #     print(f"{k}: {v}")
+    # print("compression ratio (detailed): ", mean(ratio_detailed.values()))
+    # model_wrapper.generate_onnx_files(os.path.join(args.output_path, "rle"))
 
     print("Encoding model in Huffman...")
-    ratio = huffman_model(model_wrapper)
+    ratio, ratio_detailed = huffman_model(model_wrapper)
     print("compression ratio: ", ratio)
+    for k, v in ratio_detailed.items():
+        print(f"{k}: {v}")
+    print("compression ratio (detailed): ", mean(ratio_detailed.values()))
     model_wrapper.generate_onnx_files(os.path.join(args.output_path, "huffman"))
 
 if __name__ == '__main__':

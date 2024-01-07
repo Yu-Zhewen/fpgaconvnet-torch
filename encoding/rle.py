@@ -1,10 +1,11 @@
 import torch
-
 import torch.nn as nn
 
-from encoding.utils import convert_to_int, avg_compress_ratio
+from encoding.utils import (avg_compress_ratio, avg_compress_ratio_detailed,
+                            convert_to_int)
 from models.classification.utils import AverageMeter
-from quantization.utils import QuantMode, QuantAct, WEIGHT_QUANT_MODULES
+from quantization.utils import WEIGHT_QUANT_MODULES, QuantAct, QuantMode
+
 
 def rle_compression_ratio(x, encoded_x, x_bits, l_bits):
     assert len(x.shape) == 1, "x must be a 1D tensor"
@@ -31,12 +32,12 @@ def rle_encode(x_flatten, l_bits):
             additional_elements.append([value, remain])
         additional_elements = torch.tensor(additional_elements, device=x_flatten.device)
         combined = torch.cat((combined[:index], additional_elements, combined[index + 1:]), dim=0)
-        
+
     return combined
 
 def log_encoding(module, input, output):
     batch_size = input[0].shape[0]
-    quant_data = convert_to_int(input[0], module.word_length, 
+    quant_data = convert_to_int(input[0], module.word_length,
         module.scaling_factor, module.zero_point, (module.mode == QuantMode.CHANNEL_BFP))
     encoded_data = rle_encode(quant_data, module.l_bits)
     ratio = rle_compression_ratio(quant_data, encoded_data, module.word_length, module.l_bits)
@@ -44,7 +45,7 @@ def log_encoding(module, input, output):
 
 def rle_model(model_wrapper, l_bits):
     assert "quantization" in model_wrapper.sideband_info.keys(), "Only quantized models can be encoded"
-    
+
     weight_width = model_wrapper.sideband_info["quantization"]["weight_width"]
     data_width = model_wrapper.sideband_info["quantization"]["data_width"]
 
@@ -60,7 +61,7 @@ def rle_model(model_wrapper, l_bits):
             ratio = rle_compression_ratio(quant_weight, encoded_weight, weight_width, l_bits)
             encode_info[name] = {"weight_compression_ratio": ratio}
         elif isinstance(module, QuantAct):
-            assert name.endswith(".0") or name.endswith(".2")        
+            assert name.endswith(".0") or name.endswith(".2")
             module.l_bits = l_bits
             module.encoding_ratio = AverageMeter('compression ratio', ':6.3f')
             module.register_forward_hook(log_encoding)
@@ -78,5 +79,5 @@ def rle_model(model_wrapper, l_bits):
                 assert False, "unexpected module name"
 
     model_wrapper.sideband_info["encoding"] = encode_info
-    
-    return avg_compress_ratio(encode_info)
+
+    return avg_compress_ratio(encode_info), avg_compress_ratio_detailed(encode_info)
