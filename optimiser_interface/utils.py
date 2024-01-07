@@ -12,7 +12,7 @@ def process_opt_report(output_dir):
         report = json.load(f)
     throughput = report["network"]["performance"]["throughput (FPS)"]
     latency = report["network"]["performance"]["latency (s)"]
-    resources = report["network"]["max_resource_usage"]
+    resources = report["network"]["avg_resource_usage"]
     return throughput, latency, resources
 
 def opt_cli_launcher(model_name, onnx_path, output_dir,
