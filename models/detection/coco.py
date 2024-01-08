@@ -18,6 +18,7 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         self.yolo = YOLO(self.model_name)
         self.model = self.yolo.model
         self.model_fixer()
+        self.input_size = (1, 3, self.yolo.overrides['imgsz'], self.yolo.overrides['imgsz'])
 
         # utlralytics conv bn fusion not working after compression, disable it
         def _fuse(verbose=True):

@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
-
 import torch
 import torch.nn as nn
 
+from abc import ABC, abstractmethod
+from fvcore.nn import FlopCountAnalysis, parameter_count
 
 class TorchModelWrapper(nn.Module, ABC):
     def __init__(self, model_name):
@@ -36,5 +36,18 @@ class TorchModelWrapper(nn.Module, ABC):
     def replace_modules(self, replace_dict):
         from models.utils import replace_modules
         replace_modules(self.model, replace_dict)
+
+    def profile(self):
+        random_input = torch.randn(self.input_size)
+        flop_counter = FlopCountAnalysis(self.model, random_input)
+        # ignore batch norm
+        flop_counter._ignored_ops.add("aten::batch_norm")
+        del flop_counter._op_handles["aten::batch_norm"] 
+
+        param_counter = parameter_count(self.model)
+        macs = flop_counter.total()
+        params = param_counter['']
+
+        print(f"MACs: {macs}, Params: {params}")
 
     from models.utils import generate_onnx_files
