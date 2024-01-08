@@ -12,6 +12,7 @@ PyTorch frontend for fpgaConvNet, providing emulated accuracy results for featur
 python quantization_example.py
 python activation_sparsity_example.py
 python threshold_relu_example.py
+python encoding_example.py
 ```
 
 ## Model Zoo
@@ -94,6 +95,10 @@ python threshold_relu_example.py
 | ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))         | RLE-8      | 1.737       |
 | ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))         | RLE-8      | 1.721       |
 | brats2020  | unet3d (onnx)                                                                                              | RLE-8      | TBA         |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1aqS8RNd9xzueqJErB86T42EgcNYC3TRc/view?usp=sharing))       | RLE-4      | 1.317        
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/14OMcASZyFpjbZGGbRAoiVBanvGucaGRs/view?usp=sharing)) | RLE-4      | 0.717
+| coco       | yolov8n ([onnx]())       | RLE-2      | 
+| camvid     | unet-bilinear ([onnx]()) | RLE-2      | 
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1ghj2Da4HdkHSC-ADSe-JwvQbtwhUT_vT/view?usp=sharing))       | Huffman    | 0.821       |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman    | 0.684       |
 | cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman    | 0.692       |
