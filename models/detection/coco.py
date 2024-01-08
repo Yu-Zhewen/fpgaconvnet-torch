@@ -1,20 +1,21 @@
-import onnx
 import os
-import torch
-import yaml
 
 import numpy as np
+import onnx
 import onnx_graphsurgeon as gs
+import torch
 import torch.nn as nn
+import yaml
 
 from models.base import TorchModelWrapper
+
 # note: do NOT move ultralytic import to the top, otherwise the edit in settings will not take effect
 
 class UltralyticsModelWrapper(TorchModelWrapper):
     # https://github.com/ultralytics/ultralytics
 
     def load_model(self, eval=True):
-        from ultralytics import YOLO 
+        from ultralytics import YOLO
         self.yolo = YOLO(self.model_name)
         self.model = self.yolo.model
         self.model_fixer()
@@ -29,7 +30,7 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         for name, module in self.named_modules():
             if isinstance(module, Conv) and isinstance(module.act, nn.SiLU):
                 module.act = nn.Hardswish(inplace=True)
-                
+
     def load_data(self, batch_size, workers):
         from ultralytics import settings
 
@@ -41,20 +42,20 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         # note: ultralytics automatically handle the dataloaders, only need to set the path
         self.data_loaders['calibrate'] = "coco128.yaml"
         self.data_loaders['validate'] = "coco.yaml"
-        
+
         self.batch_size = batch_size
         self.workers = workers
-        
+
     def inference(self, mode="validate"):
         mode = "validate" if mode == "test" else mode
         print("Inference mode: {}".format(mode))
         self.yolo.model = self.model
         return self.yolo.val(batch=self.batch_size, workers=self.workers,
-            device="cpu" if not torch.cuda.is_available() else f"cuda:{torch.cuda.current_device()}", 
+            device="cpu" if not torch.cuda.is_available() else f"cuda:{torch.cuda.current_device()}",
             data=self.data_loaders[mode], plots=False)
 
     def onnx_exporter(self, onnx_path):
-        path = self.yolo.export(format="onnx", simplify=True)
+        path = self.yolo.export(format="onnx", simplify=True, opset=14)
         os.rename(path, onnx_path)
         self.remove_detection_head_v8(onnx_path)
 
@@ -98,9 +99,9 @@ class UltralyticsModelWrapper(TorchModelWrapper):
         resize.inputs[1] = gs.Constant("roi_1", np.array([0.0,0.0,0.0,0.0]))
 
         # create the output nodes
-        output_l = gs.Variable("/model.22/Concat_output_0",   shape=concat_l.outputs[0].shape, dtype="float16")
-        output_m = gs.Variable("/model.22/Concat_1_output_0", shape=concat_m.outputs[0].shape, dtype="float16")
-        output_r = gs.Variable("/model.22/Concat_2_output_0", shape=concat_r.outputs[0].shape, dtype="float16")
+        output_l = gs.Variable("/model.22/Concat_output_0",   shape=concat_l.outputs[0].shape, dtype="float32")
+        output_m = gs.Variable("/model.22/Concat_1_output_0", shape=concat_m.outputs[0].shape, dtype="float32")
+        output_r = gs.Variable("/model.22/Concat_2_output_0", shape=concat_r.outputs[0].shape, dtype="float32")
 
         # connect the output nodes
         concat_l.outputs = [ output_l ]
