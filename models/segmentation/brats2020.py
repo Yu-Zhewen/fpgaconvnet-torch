@@ -82,7 +82,15 @@ class Unet3DKaggleModelWrapper(TorchModelWrapper):
         print("Dice: {:.4f}, IoU: {:.4f}".format(dice_score, iou_score))
 
     def onnx_exporter(self, onnx_path):
-        super().onnx_exporter(onnx_path)
+        random_input = torch.randn(self.input_size)
+        if torch.cuda.is_available():
+            random_input = random_input.cuda()
+        replace_dict = {}
+        for module in self.model.modules():
+            if isinstance(module, nn.GroupNorm):
+                replace_dict[module] = nn.Identity()
+        self.replace_modules(replace_dict)
+        torch.onnx.export(self.model, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
         model = onnx.load(onnx_path)
         model_simp, check = simplify(model)
         onnx.checker.check_model(model_simp)
