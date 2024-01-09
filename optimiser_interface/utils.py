@@ -17,7 +17,7 @@ def process_opt_report(output_dir):
 
 def opt_cli_launcher(model_name, onnx_path, output_dir,
                     batch_size=256, device="u250", 
-                    opt_obj='throughput', opt_solver='greedy_partition', opt_cfg="single_partition_throughput"):
+                    opt_obj='throughput', opt_solver='greedy_partition', opt_cfg="single_partition_throughput", override={}):
 
     platform_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER'], f'examples/platforms/{device}.toml')
     opt_cfg_path = os.path.join(os.environ['FPGACONVNET_OPTIMISER'], f'examples/optimisers/{opt_cfg}.toml')
@@ -32,6 +32,8 @@ def opt_cli_launcher(model_name, onnx_path, output_dir,
     sys.argv += ['--optimiser', opt_solver]
     sys.argv += ['--optimiser_config_path', opt_cfg_path]
     sys.argv += ['--custom_onnx']
+    for k, v in override.items():
+        sys.argv += [f'--{k}', str(v)]
     main()
     sys.argv = saved_argv
 
