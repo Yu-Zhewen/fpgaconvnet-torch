@@ -34,7 +34,7 @@ class Unet3DKaggleModelWrapper(TorchModelWrapper):
 
         checkpoint_path = "https://drive.google.com/uc?export=download&id=1NiyVXIr5zcnd3F-zNi3FCj6PmYZnabH-"
         state_dict = torch.hub.load_state_dict_from_url(
-            checkpoint_path, file_name=f"{self.model_name}.pth")
+            checkpoint_path, file_name=f"{self.model_name}.pth", map_location=self.device)
 
         self.model.load_state_dict(state_dict, strict=True)
 
@@ -88,9 +88,9 @@ class Unet3DKaggleModelWrapper(TorchModelWrapper):
         replace_dict = {}
         for module in self.model.modules():
             if isinstance(module, nn.GroupNorm):
-                replace_dict[module] = nn.Identity()
+                replace_dict[module] = nn.BatchNorm3d(module.num_channels)
         self.replace_modules(replace_dict)
-        torch.onnx.export(self.model, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
+        torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
         model = onnx.load(onnx_path)
         model_simp, check = simplify(model)
         onnx.checker.check_model(model_simp)
