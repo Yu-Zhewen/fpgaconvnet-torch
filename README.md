@@ -94,7 +94,7 @@ python encoding_example.py
 | cityscapes | unet (onnx)                                                                                                | RLE-8      | GPU TIMEOUT |
 | ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))         | RLE-8      | 1.737       |
 | ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))         | RLE-8      | 1.721       |
-| brats2020  | unet3d ([onnx](https://drive.google.com/file/d/1yRPN4FRfp91pq25N5bXUTQQyezUndIaM/view?usp=sharing)         | RLE-8      | 0.821       |
+| brats2020  | unet3d ([onnx](https://drive.google.com/file/d/1yRPN4FRfp91pq25N5bXUTQQyezUndIaM/view?usp=sharing))        | RLE-8      | 0.821       |
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1aqS8RNd9xzueqJErB86T42EgcNYC3TRc/view?usp=sharing))       | RLE-4      | 1.317
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/14OMcASZyFpjbZGGbRAoiVBanvGucaGRs/view?usp=sharing)) | RLE-4      | 0.717
 | coco       | yolov8n ([onnx]())       | RLE-2      |
