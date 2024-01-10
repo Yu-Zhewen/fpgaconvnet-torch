@@ -88,7 +88,7 @@ class Unet3DKaggleModelWrapper(TorchModelWrapper):
         replace_dict = {}
         for module in self.model.modules():
             if isinstance(module, nn.GroupNorm):
-                replace_dict[module] = nn.BatchNorm3d(module.num_channels)
+                replace_dict[module] = nn.BatchNorm3d(module.num_channels).to(self.device)
         self.replace_modules(replace_dict)
         torch.onnx.export(self, random_input, onnx_path, verbose=False, keep_initializers_as_inputs=True)
         model = onnx.load(onnx_path)
