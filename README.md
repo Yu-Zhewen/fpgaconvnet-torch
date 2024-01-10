@@ -89,15 +89,15 @@ python encoding_example.py
 
 | Dataset    | Model                | Experiment | Avg Compression Ratio |
 |------------|----------------------|------------|-------------------|
-| coco       | yolov8n ([onnx](https://drive.google.com/file/d/10-lNBid4VRzWBrE6GuT3I3L3H2BtWT1P/view?usp=sharing))       | RLE-8      | 1.753       |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1zN1K4b2SU6Mpu4lMsLg2drupGyjphSxg/view?usp=sharing))       | RLE-8      | 1.753       |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1C_Q58_NKMVfpbqg3ZbQ1IzyMSgoopex7/view?usp=sharing)) | RLE-8      | 1.175       |
 | cityscapes | unet (onnx)                                                                                                | RLE-8      | GPU TIMEOUT |
 | ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/1gY5HGMWacbTQ5cK8MWdQgQ1lQM5VWRFb/view?usp=sharing))         | RLE-8      | 1.737       |
 | ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))         | RLE-8      | 1.721       |
 | brats2020  | unet3d ([onnx](https://drive.google.com/file/d/1yRPN4FRfp91pq25N5bXUTQQyezUndIaM/view?usp=sharing))        | RLE-8      | 0.821       |
-| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1aqS8RNd9xzueqJErB86T42EgcNYC3TRc/view?usp=sharing))       | RLE-4      | 1.317
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1Qns_9Mp-6K42t9cWhTi1lOHNMIQwFYe2/view?usp=sharing))       | RLE-4      | 1.317
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/14OMcASZyFpjbZGGbRAoiVBanvGucaGRs/view?usp=sharing)) | RLE-4      | 0.717
-| coco       | yolov8n ([onnx]())       | RLE-2      |
+| coco       | yolov8n ([onnx](https://drive.google.com/file/d/1GeJPQL5QsIuqsWpoCuaCBk7CzA80R-BT/view?usp=sharing))       | RLE-2      | 1.112
 | camvid     | unet-bilinear ([onnx]()) | RLE-2      |
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1MBYi-0yO7iXtEnjNYI3ZoeLVaPmR91yb/view?usp=sharing))       | Huffman    | 0.824       |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman    | 0.684       |
