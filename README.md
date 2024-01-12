@@ -38,7 +38,8 @@ python encoding_example.py
 ### coco (val, mAP50-95)
 | Model   | Source                                                    | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
 |---------|-----------------------------------------------------------|---------|---------|--------|--------------|----------------|
-| yolov8n | [ultralytics](https://github.com/ultralytics/ultralytics) | 37.1    | 37.1    | 0.0    | 0.0          | 35.1           |
+| yolov8n | [ultralytics](https://github.com/ultralytics/ultralytics) | 37.1    | 37.1    | 0.0    | 29.6         | 35.1           |
+| yolov8s | [ultralytics](https://github.com/ultralytics/ultralytics) | 39.2    | 39.1    | 0.0    | 38.7         | 36.8           |
 
 ### camvid (val, mIOU)
 | Model         | Source                                          | Float32 | Fixed16 | Fixed8 | BFP8 (Layer) | BFP8 (Channel) |
@@ -100,6 +101,7 @@ python encoding_example.py
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1GeJPQL5QsIuqsWpoCuaCBk7CzA80R-BT/view?usp=sharing))       | RLE-2      | 1.112
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1g3F48zihC812ymH0WdNBoMPkrn84GXSi/view?usp=sharing)) | RLE-2      | 0.838
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1MBYi-0yO7iXtEnjNYI3ZoeLVaPmR91yb/view?usp=sharing))       | Huffman    | 0.824       |
+| coco       | yolov8s ([onnx](https://drive.google.com/file/d/1qhdnDcahno8Hl9vnW-_ZS1milq3JRNQV/view?usp=sharing))       | Huffman    | 0.805       |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman    | 0.684       |
 | cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman    | 0.692       |
 | ucf101     | x3d_s ([onnx](https://drive.google.com/file/d/19c6jwuHZVcfZXPpXMaGmaK9AsRXPO5lJ/view?usp=sharing))         | Huffman    | 0.835       |
