@@ -1,19 +1,19 @@
-import onnx
 import os
-import torch
 
+import onnx
+import torch
 from mmengine.config import Config, DictAction
-from mmengine.runner import Runner
-from mmengine.runner import load_checkpoint
-from models.base import TorchModelWrapper
+from mmengine.runner import Runner, load_checkpoint
 from onnxsim import simplify
+
+from models.base import TorchModelWrapper
 
 
 class MmactionModelWrapper(TorchModelWrapper):
     # https://github.com/open-mmlab/mmaction
 
-    def __init__(self, model_name, input_size=(1, 1, 3, 16, 256, 256), num_classes=101):
-        self.input_size = input_size
+    def __init__(self, model_name, num_classes=101):
+        self.input_size = (1, 1, 3, 16, 256, 256) if model_name == "x3d_m" else (1, 1, 3, 13, 182, 182)
         self.num_classes = num_classes
         super().__init__(model_name)
 

@@ -22,7 +22,7 @@ def initialize_wrapper(dataset_name, model_name,
             model_wrapper = TimmModelWrapper(model_name)
     elif dataset_name == "coco":
         os.environ['COCO_PATH'] = dataset_path
-        if model_name in ["yolov8n"]:
+        if model_name in ["yolov8n", "yolov8s"]:
             from models.detection.coco import UltralyticsModelWrapper
             model_wrapper = UltralyticsModelWrapper(model_name)
     elif dataset_name == "camvid":
