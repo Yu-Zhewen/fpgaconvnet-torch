@@ -96,9 +96,9 @@ python encoding_example.py
 | ucf101     | x3d_m ([onnx](https://drive.google.com/file/d/1WaLjJYE0l_AiIrZw559Ile3xQza_wnWJ/view?usp=sharing))         | RLE-8      | 1.721       |
 | brats2020  | unet3d ([onnx](https://drive.google.com/file/d/1yRPN4FRfp91pq25N5bXUTQQyezUndIaM/view?usp=sharing))        | RLE-8      | 0.821       |
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1Qns_9Mp-6K42t9cWhTi1lOHNMIQwFYe2/view?usp=sharing))       | RLE-4      | 1.317
-| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/14OMcASZyFpjbZGGbRAoiVBanvGucaGRs/view?usp=sharing)) | RLE-4      | 0.717
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/18PquUpo61-JvsA85m0T-SNbUtYtvy6Vi/view?usp=sharing)) | RLE-4      | 0.717
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1GeJPQL5QsIuqsWpoCuaCBk7CzA80R-BT/view?usp=sharing))       | RLE-2      | 1.112
-| camvid     | unet-bilinear ([onnx]()) | RLE-2      |
+| camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1g3F48zihC812ymH0WdNBoMPkrn84GXSi/view?usp=sharing)) | RLE-2      | 0.838
 | coco       | yolov8n ([onnx](https://drive.google.com/file/d/1MBYi-0yO7iXtEnjNYI3ZoeLVaPmR91yb/view?usp=sharing))       | Huffman    | 0.824       |
 | camvid     | unet-bilinear ([onnx](https://drive.google.com/file/d/1X6Ps_qcbP7vJLgNCkHbsHtWY6aSnG8es/view?usp=sharing)) | Huffman    | 0.684       |
 | cityscapes | unet ([onnx](https://drive.google.com/file/d/1d2v6VJI8B9DZY020Nq_AWQR0e8F9LH6A/view?usp=sharing))          | Huffman    | 0.692       |
