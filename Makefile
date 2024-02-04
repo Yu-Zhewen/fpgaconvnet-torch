@@ -1,4 +1,4 @@
-IMAGENET_PATH = ${HOME}/dataset/ILSVRC2012_img
+IMAGENET_PATH=${HOME}/dataset/ILSVRC2012_img
 
 base:
 	pip install -r requirements.txt
