@@ -16,8 +16,8 @@ cifar: ;
 imagenet:
 	pip install timm==0.9.8
 	WORKDIR=${PWD}
-	mkdir -p IMAGENET_PATH
-	cd IMAGENET_PATH
+	mkdir -p ${IMAGENET_PATH}
+	cd ${IMAGENET_PATH}
 	wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar
 	wget https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar
 	mkdir train && mv ILSVRC2012_img_train.tar train/ && cd train
