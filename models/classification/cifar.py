@@ -28,10 +28,12 @@ class ChenyaofoModelWrapper(TorchModelWrapper):
             dataset_builder = CIFAR10
             mean = [0.4914, 0.4822, 0.4465]
             std = [0.2023, 0.1994, 0.2010]
+            root = os.environ.get("CIFAR_10_PATH", os.path.expanduser("~/dataset/cifar10"))
         elif self.num_classes == 100:
             dataset_builder = CIFAR100
             mean = [0.5070, 0.4865, 0.4409]
             std = [0.2673, 0.2564, 0.2761]
+            root = os.environ.get("CIFAR_100_PATH", os.path.expanduser("~/dataset/cifar100"))
 
         root = os.environ['CIFAR_PATH']
         #train_transforms = transforms.Compose([
