@@ -109,7 +109,7 @@ def main():
             throughput = w_throughput
             print("Weight Sparsity is better")
         else:
-            activation_threshold += args.activatoin_step_size
+            activation_threshold += args.activation_step_size
             top1 = a_top1
             throughput = a_throughput
             print("Activation Sparsity is better")
