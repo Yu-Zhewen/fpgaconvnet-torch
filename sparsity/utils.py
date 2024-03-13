@@ -124,7 +124,7 @@ class SlideWindowConvolution(nn.Module):
         # roll the loop to reduce GPU memory
         roll_factor = 7
         if h_windows % roll_factor != 0:
-            roll_factor = get_factors(h_windows)[1]
+            roll_factor = 1
         if w_windows % roll_factor != 0:
             roll_factor = 1
 
