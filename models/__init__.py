@@ -14,7 +14,7 @@ def initialize_wrapper(dataset_name, model_name,
         model_wrapper = ChenyaofoModelWrapper(model_name, num_classes=100)
     elif dataset_name == "imagenet":
         os.environ['IMAGENET_PATH'] = dataset_path
-        if model_name in ["resnet18", "resnet50", "mobilenet_v2"]:
+        if model_name in ["resnet18", "resnet50", "mobilenet_v2", "mobilenet_v3_small", "mobilenet_v3_large"]:
             from models.classification.imagenet import TorchvisionModelWrapper
             model_wrapper = TorchvisionModelWrapper(model_name)
         elif model_name in ["repvgg_a0"]:
